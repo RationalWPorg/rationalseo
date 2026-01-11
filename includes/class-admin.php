@@ -174,6 +174,38 @@ class RationalSEO_Admin {
 			'rationalseo_social',
 			'rationalseo_social_section'
 		);
+
+		// Sitemaps Section.
+		add_settings_section(
+			'rationalseo_sitemap_section',
+			__( 'XML Sitemaps', 'rationalseo' ),
+			array( $this, 'render_section_sitemap' ),
+			'rationalseo_sitemaps'
+		);
+
+		add_settings_field(
+			'sitemap_enabled',
+			__( 'Enable Sitemaps', 'rationalseo' ),
+			array( $this, 'render_field_sitemap_enabled' ),
+			'rationalseo_sitemaps',
+			'rationalseo_sitemap_section'
+		);
+
+		add_settings_field(
+			'sitemap_max_age',
+			__( 'Content Freshness', 'rationalseo' ),
+			array( $this, 'render_field_sitemap_max_age' ),
+			'rationalseo_sitemaps',
+			'rationalseo_sitemap_section'
+		);
+
+		add_settings_field(
+			'sitemap_exclude_types',
+			__( 'Exclude Post Types', 'rationalseo' ),
+			array( $this, 'render_field_sitemap_exclude_types' ),
+			'rationalseo_sitemaps',
+			'rationalseo_sitemap_section'
+		);
 	}
 
 	/**
@@ -225,6 +257,26 @@ class RationalSEO_Admin {
 			? $input['twitter_card_type']
 			: 'summary_large_image';
 
+		$sanitized['sitemap_enabled'] = isset( $input['sitemap_enabled'] ) && '1' === $input['sitemap_enabled'];
+
+		$sanitized['sitemap_max_age'] = isset( $input['sitemap_max_age'] )
+			? absint( $input['sitemap_max_age'] )
+			: 0;
+
+		$sanitized['sitemap_exclude_types'] = array();
+		if ( isset( $input['sitemap_exclude_types'] ) && is_array( $input['sitemap_exclude_types'] ) ) {
+			$sanitized['sitemap_exclude_types'] = array_map( 'sanitize_key', $input['sitemap_exclude_types'] );
+		}
+
+		// Flush rewrite rules if sitemap settings changed.
+		$old_settings = get_option( RationalSEO_Settings::OPTION_NAME, array() );
+		$sitemap_changed = (
+			( isset( $old_settings['sitemap_enabled'] ) ? $old_settings['sitemap_enabled'] : true ) !== $sanitized['sitemap_enabled']
+		);
+		if ( $sitemap_changed ) {
+			add_action( 'shutdown', array( 'RationalSEO_Sitemap', 'flush_rules' ) );
+		}
+
 		return $sanitized;
 	}
 
@@ -266,8 +318,9 @@ class RationalSEO_Admin {
 
 		$current_tab = $this->get_current_tab();
 		$tabs        = array(
-			'general' => __( 'General', 'rationalseo' ),
-			'social'  => __( 'Social', 'rationalseo' ),
+			'general'  => __( 'General', 'rationalseo' ),
+			'social'   => __( 'Social', 'rationalseo' ),
+			'sitemaps' => __( 'Sitemaps', 'rationalseo' ),
 		);
 		?>
 		<div class="wrap rationalseo-settings">
@@ -288,6 +341,8 @@ class RationalSEO_Admin {
 
 				if ( 'social' === $current_tab ) {
 					do_settings_sections( 'rationalseo_social' );
+				} elseif ( 'sitemaps' === $current_tab ) {
+					do_settings_sections( 'rationalseo_sitemaps' );
 				} else {
 					do_settings_sections( 'rationalseo' );
 				}
@@ -504,6 +559,109 @@ class RationalSEO_Admin {
 			</option>
 		</select>
 		<p class="description"><?php esc_html_e( 'Choose how Twitter displays your content when shared.', 'rationalseo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Sitemap section description.
+	 */
+	public function render_section_sitemap() {
+		$sitemap_url = home_url( '/sitemap.xml' );
+		echo '<p>' . esc_html__( 'Configure XML sitemap settings for search engines.', 'rationalseo' ) . '</p>';
+		if ( $this->settings->get( 'sitemap_enabled', true ) ) {
+			echo '<p>';
+			printf(
+				/* translators: %s: Sitemap URL */
+				esc_html__( 'Your sitemap is available at: %s', 'rationalseo' ),
+				'<a href="' . esc_url( $sitemap_url ) . '" target="_blank" rel="noopener">' . esc_html( $sitemap_url ) . '</a>'
+			);
+			echo '</p>';
+		}
+	}
+
+	/**
+	 * Render Sitemap Enabled field.
+	 */
+	public function render_field_sitemap_enabled() {
+		$value = $this->settings->get( 'sitemap_enabled', true );
+		?>
+		<label>
+			<input type="checkbox"
+				name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[sitemap_enabled]"
+				id="sitemap_enabled"
+				value="1"
+				<?php checked( $value, true ); ?>>
+			<?php esc_html_e( 'Enable XML sitemaps', 'rationalseo' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'Generate XML sitemaps to help search engines discover your content.', 'rationalseo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Sitemap Max Age field.
+	 */
+	public function render_field_sitemap_max_age() {
+		$value = $this->settings->get( 'sitemap_max_age', 0 );
+		?>
+		<select name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[sitemap_max_age]" id="sitemap_max_age">
+			<option value="0" <?php selected( $value, 0 ); ?>>
+				<?php esc_html_e( 'Include all content', 'rationalseo' ); ?>
+			</option>
+			<option value="6" <?php selected( $value, 6 ); ?>>
+				<?php esc_html_e( 'Last 6 months', 'rationalseo' ); ?>
+			</option>
+			<option value="12" <?php selected( $value, 12 ); ?>>
+				<?php esc_html_e( 'Last 12 months', 'rationalseo' ); ?>
+			</option>
+			<option value="24" <?php selected( $value, 24 ); ?>>
+				<?php esc_html_e( 'Last 24 months', 'rationalseo' ); ?>
+			</option>
+			<option value="36" <?php selected( $value, 36 ); ?>>
+				<?php esc_html_e( 'Last 36 months', 'rationalseo' ); ?>
+			</option>
+		</select>
+		<p class="description"><?php esc_html_e( 'Exclude older content from sitemaps to focus on fresh content.', 'rationalseo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Sitemap Exclude Types field.
+	 */
+	public function render_field_sitemap_exclude_types() {
+		$excluded = $this->settings->get( 'sitemap_exclude_types', array() );
+		if ( ! is_array( $excluded ) ) {
+			$excluded = array();
+		}
+
+		$post_types = get_post_types(
+			array(
+				'public' => true,
+			),
+			'objects'
+		);
+
+		// Remove attachments from the list.
+		unset( $post_types['attachment'] );
+
+		if ( empty( $post_types ) ) {
+			echo '<p>' . esc_html__( 'No public post types found.', 'rationalseo' ) . '</p>';
+			return;
+		}
+
+		foreach ( $post_types as $post_type ) {
+			$checked = in_array( $post_type->name, $excluded, true );
+			?>
+			<label style="display: block; margin-bottom: 5px;">
+				<input type="checkbox"
+					name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[sitemap_exclude_types][]"
+					value="<?php echo esc_attr( $post_type->name ); ?>"
+					<?php checked( $checked, true ); ?>>
+				<?php echo esc_html( $post_type->label ); ?> <code><?php echo esc_html( $post_type->name ); ?></code>
+			</label>
+			<?php
+		}
+		?>
+		<p class="description"><?php esc_html_e( 'Select post types to exclude from the sitemap.', 'rationalseo' ); ?></p>
 		<?php
 	}
 }

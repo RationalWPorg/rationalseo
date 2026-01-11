@@ -47,6 +47,13 @@ class RationalSEO {
 	private $meta_box;
 
 	/**
+	 * Sitemap instance.
+	 *
+	 * @var RationalSEO_Sitemap
+	 */
+	private $sitemap;
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return RationalSEO
@@ -64,6 +71,7 @@ class RationalSEO {
 	private function __construct() {
 		$this->settings = new RationalSEO_Settings();
 		$this->frontend = new RationalSEO_Frontend( $this->settings );
+		$this->sitemap  = new RationalSEO_Sitemap( $this->settings );
 
 		if ( is_admin() ) {
 			$this->admin    = new RationalSEO_Admin( $this->settings );
@@ -105,5 +113,14 @@ class RationalSEO {
 	 */
 	public function get_meta_box() {
 		return $this->meta_box;
+	}
+
+	/**
+	 * Get sitemap instance.
+	 *
+	 * @return RationalSEO_Sitemap
+	 */
+	public function get_sitemap() {
+		return $this->sitemap;
 	}
 }
