@@ -263,9 +263,43 @@ array(
 - `includes/class-admin.php` - Added tab navigation, Social section, fields, sanitization
 - `includes/class-frontend.php` - Added `output_open_graph()`, `output_twitter_cards()`, `get_social_image()`
 
-### Phase 3: Post Meta & Editor Integration (Next)
+### Phase 3: Post Meta & Editor Integration ✅ COMPLETE
 
-### Phase 4: JSON-LD Schema (Planned)
+**Completed Features:**
+- Meta box class (`includes/class-meta-box.php`):
+  - Registers on all public post types (posts, pages, custom post types)
+  - Nonce verification and capability checks for security
+  - Proper sanitization of all inputs
+- Meta box fields:
+  - SEO Title: Text input with placeholder showing calculated default
+  - Meta Description: Textarea with helper text
+  - Advanced Section (collapsed by default):
+    - Exclude from Search Results (noindex checkbox)
+    - Canonical URL override input
+    - Social Image Override URL input
+- Meta box CSS (`assets/css/meta-box.css`)
+- Frontend integration:
+  - `get_social_image()` updated with new priority: custom OG image → featured image → default social image → site logo
+
+**Post Meta Keys:**
+```php
+'_rationalseo_title'     // Custom SEO title
+'_rationalseo_desc'      // Custom meta description
+'_rationalseo_canonical' // Custom canonical URL
+'_rationalseo_noindex'   // Boolean: exclude from search (stores '1' or deleted)
+'_rationalseo_og_image'  // Custom social sharing image URL
+```
+
+**Files Created:**
+- `includes/class-meta-box.php` - Meta box registration, rendering, and saving
+- `assets/css/meta-box.css` - Meta box styling
+
+**Files Modified:**
+- `rationalseo.php` - Added require for meta box class
+- `includes/class-rationalseo.php` - Added meta box property and instantiation
+- `includes/class-frontend.php` - Added `_rationalseo_og_image` check in `get_social_image()`
+
+### Phase 4: JSON-LD Schema (Next)
 
 ### Phase 5: Sitemaps (Planned)
 

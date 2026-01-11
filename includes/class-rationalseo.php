@@ -40,6 +40,13 @@ class RationalSEO {
 	private $admin;
 
 	/**
+	 * Meta Box instance.
+	 *
+	 * @var RationalSEO_Meta_Box
+	 */
+	private $meta_box;
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return RationalSEO
@@ -59,7 +66,8 @@ class RationalSEO {
 		$this->frontend = new RationalSEO_Frontend( $this->settings );
 
 		if ( is_admin() ) {
-			$this->admin = new RationalSEO_Admin( $this->settings );
+			$this->admin    = new RationalSEO_Admin( $this->settings );
+			$this->meta_box = new RationalSEO_Meta_Box( $this->settings );
 		}
 	}
 
@@ -88,5 +96,14 @@ class RationalSEO {
 	 */
 	public function get_admin() {
 		return $this->admin;
+	}
+
+	/**
+	 * Get meta box instance.
+	 *
+	 * @return RationalSEO_Meta_Box|null
+	 */
+	public function get_meta_box() {
+		return $this->meta_box;
 	}
 }
