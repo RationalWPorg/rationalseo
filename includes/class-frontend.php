@@ -438,16 +438,25 @@ class RationalSEO_Frontend {
 	 * Get social sharing image.
 	 *
 	 * Priority:
-	 * 1. Featured image (if singular post/page)
-	 * 2. Default social image from settings
-	 * 3. Site logo from settings
+	 * 1. Custom social image override (post meta)
+	 * 2. Featured image (if singular post/page)
+	 * 3. Default social image from settings
+	 * 4. Site logo from settings
 	 *
 	 * @return string Image URL or empty string.
 	 */
 	private function get_social_image() {
-		// Try featured image for singular posts/pages.
+		// Try custom social image override for singular posts/pages.
 		if ( is_singular() ) {
 			$post = get_queried_object();
+
+			// Check for custom social image override.
+			$custom_image = get_post_meta( $post->ID, '_rationalseo_og_image', true );
+			if ( ! empty( $custom_image ) ) {
+				return $custom_image;
+			}
+
+			// Try featured image.
 			if ( has_post_thumbnail( $post ) ) {
 				$thumbnail_id  = get_post_thumbnail_id( $post );
 				$thumbnail_url = wp_get_attachment_image_url( $thumbnail_id, 'large' );
