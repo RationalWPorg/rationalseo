@@ -94,13 +94,11 @@ if ( ! function_exists( 'rationalwp_fetch_remote_plugins' ) ) {
 
 		// Check for errors.
 		if ( is_wp_error( $response ) ) {
-			error_log( 'RationalWP: Failed to fetch plugins.json - ' . $response->get_error_message() );
 			return false;
 		}
 
 		$response_code = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $response_code ) {
-			error_log( 'RationalWP: Failed to fetch plugins.json - HTTP ' . $response_code );
 			return false;
 		}
 
@@ -109,7 +107,6 @@ if ( ! function_exists( 'rationalwp_fetch_remote_plugins' ) ) {
 
 		// Validate JSON structure.
 		if ( ! is_array( $data ) || empty( $data ) ) {
-			error_log( 'RationalWP: Invalid plugins.json structure' );
 			return false;
 		}
 
@@ -122,7 +119,6 @@ if ( ! function_exists( 'rationalwp_fetch_remote_plugins' ) ) {
 				 empty( $plugin['menu_slug'] ) ||
 				 empty( $plugin['url'] ) ||
 				 empty( $plugin['file'] ) ) {
-				error_log( 'RationalWP: Invalid plugin data for ' . $plugin_key );
 				return false;
 			}
 		}
@@ -194,7 +190,8 @@ if ( ! function_exists( 'rationalwp_render_parent_page' ) ) {
 						<?php esc_html_e( 'Unable to load plugin information. Please check your internet connection and try again later.', 'rationalwp' ); ?>
 						<?php if ( current_user_can( 'manage_options' ) ) : ?>
 							<br>
-							<small><?php printf( esc_html__( 'Plugin data is fetched from %s', 'rationalwp' ), '<code>' . esc_html( RATIONALWP_PLUGINS_JSON_URL ) . '</code>' ); ?></small>
+							<?php /* translators: %s: URL to the plugins JSON file */ ?>
+						<small><?php printf( esc_html__( 'Plugin data is fetched from %s', 'rationalwp' ), '<code>' . esc_html( RATIONALWP_PLUGINS_JSON_URL ) . '</code>' ); ?></small>
 						<?php endif; ?>
 					</p>
 				</div>

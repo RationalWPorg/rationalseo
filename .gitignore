@@ -1,0 +1,22 @@
+# Development files
+CLAUDE.md
+.claude/
+.DS_Store
+
+# Build artifacts
+*.zip
+/build/
+
+# Dependencies (if added later)
+node_modules/
+vendor/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+Thumbs.db
