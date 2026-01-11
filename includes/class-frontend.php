@@ -89,6 +89,7 @@ class RationalSEO_Frontend {
 		$this->output_verification_tags();
 		$this->output_open_graph();
 		$this->output_twitter_cards();
+		$this->output_schema();
 
 		echo "<!-- /RationalSEO -->\n\n";
 	}
@@ -479,5 +480,119 @@ class RationalSEO_Frontend {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Output JSON-LD structured data.
+	 */
+	private function output_schema() {
+		$graph     = array();
+		$site_url  = home_url( '/' );
+		$site_name = $this->settings->get( 'site_name', get_bloginfo( 'name' ) );
+		$site_type = $this->settings->get( 'site_type', 'organization' );
+		$site_logo = $this->settings->get( 'site_logo' );
+
+		// Build Organization or Person entity.
+		$publisher_type = 'organization' === $site_type ? 'Organization' : 'Person';
+		$publisher      = array(
+			'@type' => $publisher_type,
+			'@id'   => $site_url . '#' . strtolower( $publisher_type ),
+			'name'  => $site_name,
+		);
+
+		// Add logo to publisher if available.
+		if ( ! empty( $site_logo ) ) {
+			$publisher['logo'] = array(
+				'@type' => 'ImageObject',
+				'@id'   => $site_url . '#logo',
+				'url'   => $site_logo,
+			);
+		}
+
+		$graph[] = $publisher;
+
+		// Build WebSite entity.
+		$website = array(
+			'@type'     => 'WebSite',
+			'@id'       => $site_url . '#website',
+			'url'       => $site_url,
+			'name'      => $site_name,
+			'publisher' => array(
+				'@id' => $site_url . '#' . strtolower( $publisher_type ),
+			),
+		);
+
+		$graph[] = $website;
+
+		// Build WebPage entity.
+		$page_url = $this->get_canonical();
+		$webpage  = array(
+			'@type'    => 'WebPage',
+			'@id'      => $page_url . '#webpage',
+			'url'      => $page_url,
+			'isPartOf' => array(
+				'@id' => $site_url . '#website',
+			),
+		);
+
+		$graph[] = $webpage;
+
+		// Build Article entity for singular posts/pages.
+		if ( is_singular() && ! is_front_page() ) {
+			$post  = get_queried_object();
+			$image = $this->get_social_image();
+
+			$article = array(
+				'@type'            => 'Article',
+				'@id'              => $page_url . '#article',
+				'headline'         => $this->get_title(),
+				'mainEntityOfPage' => array(
+					'@id' => $page_url . '#webpage',
+				),
+				'publisher'        => array(
+					'@id' => $site_url . '#' . strtolower( $publisher_type ),
+				),
+				'datePublished'    => get_the_date( 'c', $post ),
+				'dateModified'     => get_the_modified_date( 'c', $post ),
+			);
+
+			// Add image if available.
+			if ( ! empty( $image ) ) {
+				$article['image'] = array(
+					'@type' => 'ImageObject',
+					'@id'   => $page_url . '#primaryimage',
+					'url'   => $image,
+				);
+			}
+
+			// Add description if available.
+			$description = $this->get_description();
+			if ( ! empty( $description ) ) {
+				$article['description'] = $description;
+			}
+
+			// Add author if available.
+			$author = get_the_author_meta( 'display_name', $post->post_author );
+			if ( ! empty( $author ) ) {
+				$article['author'] = array(
+					'@type' => 'Person',
+					'name'  => $author,
+				);
+			}
+
+			$graph[] = $article;
+		}
+
+		// Build the full schema object.
+		$schema = array(
+			'@context' => 'https://schema.org',
+			'@graph'   => $graph,
+		);
+
+		// Output the JSON-LD.
+		printf(
+			"<script type=\"application/ld+json\">\n%s\n</script>\n",
+			wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+		);
 	}
 }
