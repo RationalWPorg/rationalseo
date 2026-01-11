@@ -21,12 +21,21 @@ class RationalSEO_Admin {
 	private $settings;
 
 	/**
+	 * Redirects instance.
+	 *
+	 * @var RationalSEO_Redirects
+	 */
+	private $redirects;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param RationalSEO_Settings $settings Settings instance.
+	 * @param RationalSEO_Settings  $settings  Settings instance.
+	 * @param RationalSEO_Redirects $redirects Redirects instance.
 	 */
-	public function __construct( RationalSEO_Settings $settings ) {
-		$this->settings = $settings;
+	public function __construct( RationalSEO_Settings $settings, RationalSEO_Redirects $redirects = null ) {
+		$this->settings  = $settings;
+		$this->redirects = $redirects;
 		$this->init_hooks();
 	}
 
@@ -206,6 +215,22 @@ class RationalSEO_Admin {
 			'rationalseo_sitemaps',
 			'rationalseo_sitemap_section'
 		);
+
+		// Redirects Section.
+		add_settings_section(
+			'rationalseo_redirects_section',
+			__( 'Redirect Settings', 'rationalseo' ),
+			array( $this, 'render_section_redirects' ),
+			'rationalseo_redirects'
+		);
+
+		add_settings_field(
+			'redirect_auto_slug',
+			__( 'Auto-Redirect on Slug Change', 'rationalseo' ),
+			array( $this, 'render_field_redirect_auto_slug' ),
+			'rationalseo_redirects',
+			'rationalseo_redirects_section'
+		);
 	}
 
 	/**
@@ -268,6 +293,8 @@ class RationalSEO_Admin {
 			$sanitized['sitemap_exclude_types'] = array_map( 'sanitize_key', $input['sitemap_exclude_types'] );
 		}
 
+		$sanitized['redirect_auto_slug'] = isset( $input['redirect_auto_slug'] ) && '1' === $input['redirect_auto_slug'];
+
 		// Flush rewrite rules if sitemap settings changed.
 		$old_settings = get_option( RationalSEO_Settings::OPTION_NAME, array() );
 		$sitemap_changed = (
@@ -318,9 +345,10 @@ class RationalSEO_Admin {
 
 		$current_tab = $this->get_current_tab();
 		$tabs        = array(
-			'general'  => __( 'General', 'rationalseo' ),
-			'social'   => __( 'Social', 'rationalseo' ),
-			'sitemaps' => __( 'Sitemaps', 'rationalseo' ),
+			'general'   => __( 'General', 'rationalseo' ),
+			'social'    => __( 'Social', 'rationalseo' ),
+			'sitemaps'  => __( 'Sitemaps', 'rationalseo' ),
+			'redirects' => __( 'Redirects', 'rationalseo' ),
 		);
 		?>
 		<div class="wrap rationalseo-settings">
@@ -335,21 +363,33 @@ class RationalSEO_Admin {
 				<?php endforeach; ?>
 			</nav>
 
-			<form action="options.php" method="post">
-				<?php
-				settings_fields( 'rationalseo_settings_group' );
+			<?php if ( 'redirects' === $current_tab ) : ?>
+				<form action="options.php" method="post">
+					<?php
+					settings_fields( 'rationalseo_settings_group' );
+					do_settings_sections( 'rationalseo_redirects' );
+					submit_button( __( 'Save Settings', 'rationalseo' ) );
+					?>
+				</form>
 
-				if ( 'social' === $current_tab ) {
-					do_settings_sections( 'rationalseo_social' );
-				} elseif ( 'sitemaps' === $current_tab ) {
-					do_settings_sections( 'rationalseo_sitemaps' );
-				} else {
-					do_settings_sections( 'rationalseo' );
-				}
+				<?php $this->render_redirect_manager(); ?>
+			<?php else : ?>
+				<form action="options.php" method="post">
+					<?php
+					settings_fields( 'rationalseo_settings_group' );
 
-				submit_button( __( 'Save Settings', 'rationalseo' ) );
-				?>
-			</form>
+					if ( 'social' === $current_tab ) {
+						do_settings_sections( 'rationalseo_social' );
+					} elseif ( 'sitemaps' === $current_tab ) {
+						do_settings_sections( 'rationalseo_sitemaps' );
+					} else {
+						do_settings_sections( 'rationalseo' );
+					}
+
+					submit_button( __( 'Save Settings', 'rationalseo' ) );
+					?>
+				</form>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -662,6 +702,232 @@ class RationalSEO_Admin {
 		}
 		?>
 		<p class="description"><?php esc_html_e( 'Select post types to exclude from the sitemap.', 'rationalseo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Redirects section description.
+	 */
+	public function render_section_redirects() {
+		echo '<p>' . esc_html__( 'Configure URL redirect settings.', 'rationalseo' ) . '</p>';
+	}
+
+	/**
+	 * Render Auto Slug Redirect field.
+	 */
+	public function render_field_redirect_auto_slug() {
+		$value = $this->settings->get( 'redirect_auto_slug', true );
+		?>
+		<label>
+			<input type="checkbox"
+				name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[redirect_auto_slug]"
+				id="redirect_auto_slug"
+				value="1"
+				<?php checked( $value, true ); ?>>
+			<?php esc_html_e( 'Automatically create redirects when post slugs change', 'rationalseo' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'When enabled, changing a published post\'s URL slug will automatically create a 301 redirect from the old URL to the new one.', 'rationalseo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the redirect manager interface.
+	 */
+	private function render_redirect_manager() {
+		if ( ! $this->redirects ) {
+			return;
+		}
+
+		$redirects = $this->redirects->get_all_redirects();
+		$nonce     = wp_create_nonce( 'rationalseo_redirects' );
+		?>
+		<h2><?php esc_html_e( 'Redirect Manager', 'rationalseo' ); ?></h2>
+
+		<div class="rationalseo-redirect-manager">
+			<table class="wp-list-table widefat fixed striped rationalseo-redirects-table">
+				<thead>
+					<tr>
+						<th class="column-from"><?php esc_html_e( 'From URL', 'rationalseo' ); ?></th>
+						<th class="column-to"><?php esc_html_e( 'To URL', 'rationalseo' ); ?></th>
+						<th class="column-status"><?php esc_html_e( 'Type', 'rationalseo' ); ?></th>
+						<th class="column-hits"><?php esc_html_e( 'Hits', 'rationalseo' ); ?></th>
+						<th class="column-actions"><?php esc_html_e( 'Actions', 'rationalseo' ); ?></th>
+					</tr>
+				</thead>
+				<tbody id="rationalseo-redirects-list">
+					<tr class="rationalseo-add-row">
+						<td>
+							<input type="text" id="rationalseo-new-from" placeholder="/old-url/" class="regular-text">
+						</td>
+						<td>
+							<input type="url" id="rationalseo-new-to" placeholder="<?php echo esc_attr( home_url( '/new-url/' ) ); ?>" class="regular-text">
+						</td>
+						<td>
+							<select id="rationalseo-new-status">
+								<option value="301"><?php esc_html_e( '301 Permanent', 'rationalseo' ); ?></option>
+								<option value="302"><?php esc_html_e( '302 Temporary', 'rationalseo' ); ?></option>
+								<option value="307"><?php esc_html_e( '307 Temporary', 'rationalseo' ); ?></option>
+								<option value="410"><?php esc_html_e( '410 Gone', 'rationalseo' ); ?></option>
+							</select>
+						</td>
+						<td>&mdash;</td>
+						<td>
+							<button type="button" class="button button-primary" id="rationalseo-add-redirect">
+								<?php esc_html_e( 'Add', 'rationalseo' ); ?>
+							</button>
+						</td>
+					</tr>
+					<?php if ( empty( $redirects ) ) : ?>
+						<tr class="no-redirects">
+							<td colspan="5"><?php esc_html_e( 'No redirects found. Add one above.', 'rationalseo' ); ?></td>
+						</tr>
+					<?php else : ?>
+						<?php foreach ( $redirects as $redirect ) : ?>
+							<tr data-id="<?php echo esc_attr( $redirect->id ); ?>">
+								<td class="column-from"><code><?php echo esc_html( $redirect->url_from ); ?></code></td>
+								<td class="column-to">
+									<?php if ( 410 === (int) $redirect->status_code ) : ?>
+										<em><?php esc_html_e( '(Gone)', 'rationalseo' ); ?></em>
+									<?php else : ?>
+										<a href="<?php echo esc_url( $redirect->url_to ); ?>" target="_blank" rel="noopener">
+											<?php echo esc_html( $redirect->url_to ); ?>
+										</a>
+									<?php endif; ?>
+								</td>
+								<td class="column-status"><?php echo esc_html( $redirect->status_code ); ?></td>
+								<td class="column-hits"><?php echo esc_html( number_format_i18n( $redirect->count ) ); ?></td>
+								<td class="column-actions">
+									<button type="button" class="button button-link-delete rationalseo-delete-redirect" data-id="<?php echo esc_attr( $redirect->id ); ?>">
+										<?php esc_html_e( 'Delete', 'rationalseo' ); ?>
+									</button>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</tbody>
+			</table>
+
+			<div id="rationalseo-redirect-message" class="notice" style="display: none;"></div>
+		</div>
+
+		<script type="text/javascript">
+		(function($) {
+			var nonce = '<?php echo esc_js( $nonce ); ?>';
+			var homeUrl = '<?php echo esc_js( home_url() ); ?>';
+
+			// Add redirect.
+			$('#rationalseo-add-redirect').on('click', function() {
+				var $btn = $(this);
+				var urlFrom = $('#rationalseo-new-from').val().trim();
+				var urlTo = $('#rationalseo-new-to').val().trim();
+				var statusCode = $('#rationalseo-new-status').val();
+
+				if (!urlFrom) {
+					showMessage('<?php echo esc_js( __( 'Please enter a source URL.', 'rationalseo' ) ); ?>', 'error');
+					return;
+				}
+
+				if (statusCode !== '410' && !urlTo) {
+					showMessage('<?php echo esc_js( __( 'Please enter a destination URL.', 'rationalseo' ) ); ?>', 'error');
+					return;
+				}
+
+				$btn.prop('disabled', true);
+
+				$.post(ajaxurl, {
+					action: 'rationalseo_add_redirect',
+					nonce: nonce,
+					url_from: urlFrom,
+					url_to: urlTo,
+					status_code: statusCode
+				}, function(response) {
+					$btn.prop('disabled', false);
+
+					if (response.success) {
+						var redirect = response.data.redirect;
+						var toDisplay = statusCode === '410'
+							? '<em><?php echo esc_js( __( '(Gone)', 'rationalseo' ) ); ?></em>'
+							: '<a href="' + redirect.url_to + '" target="_blank" rel="noopener">' + redirect.url_to + '</a>';
+
+						var newRow = '<tr data-id="' + redirect.id + '">' +
+							'<td class="column-from"><code>' + redirect.url_from + '</code></td>' +
+							'<td class="column-to">' + toDisplay + '</td>' +
+							'<td class="column-status">' + redirect.status_code + '</td>' +
+							'<td class="column-hits">0</td>' +
+							'<td class="column-actions">' +
+								'<button type="button" class="button button-link-delete rationalseo-delete-redirect" data-id="' + redirect.id + '">' +
+									'<?php echo esc_js( __( 'Delete', 'rationalseo' ) ); ?>' +
+								'</button>' +
+							'</td>' +
+						'</tr>';
+
+						$('.rationalseo-add-row').after(newRow);
+						$('.no-redirects').remove();
+
+						// Clear inputs.
+						$('#rationalseo-new-from').val('');
+						$('#rationalseo-new-to').val('');
+						$('#rationalseo-new-status').val('301');
+
+						showMessage(response.data.message, 'success');
+					} else {
+						showMessage(response.data.message, 'error');
+					}
+				}).fail(function() {
+					$btn.prop('disabled', false);
+					showMessage('<?php echo esc_js( __( 'An error occurred. Please try again.', 'rationalseo' ) ); ?>', 'error');
+				});
+			});
+
+			// Delete redirect.
+			$(document).on('click', '.rationalseo-delete-redirect', function() {
+				var $btn = $(this);
+				var id = $btn.data('id');
+
+				if (!confirm('<?php echo esc_js( __( 'Are you sure you want to delete this redirect?', 'rationalseo' ) ); ?>')) {
+					return;
+				}
+
+				$btn.prop('disabled', true);
+
+				$.post(ajaxurl, {
+					action: 'rationalseo_delete_redirect',
+					nonce: nonce,
+					id: id
+				}, function(response) {
+					if (response.success) {
+						$btn.closest('tr').fadeOut(300, function() {
+							$(this).remove();
+							if ($('#rationalseo-redirects-list tr').length === 1) {
+								$('.rationalseo-add-row').after(
+									'<tr class="no-redirects"><td colspan="5"><?php echo esc_js( __( 'No redirects found. Add one above.', 'rationalseo' ) ); ?></td></tr>'
+								);
+							}
+						});
+						showMessage(response.data.message, 'success');
+					} else {
+						$btn.prop('disabled', false);
+						showMessage(response.data.message, 'error');
+					}
+				}).fail(function() {
+					$btn.prop('disabled', false);
+					showMessage('<?php echo esc_js( __( 'An error occurred. Please try again.', 'rationalseo' ) ); ?>', 'error');
+				});
+			});
+
+			function showMessage(message, type) {
+				var $msg = $('#rationalseo-redirect-message');
+				$msg.removeClass('notice-success notice-error')
+					.addClass('notice-' + type)
+					.html('<p>' + message + '</p>')
+					.fadeIn();
+
+				setTimeout(function() {
+					$msg.fadeOut();
+				}, 4000);
+			}
+		})(jQuery);
+		</script>
 		<?php
 	}
 }
