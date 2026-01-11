@@ -1,0 +1,41 @@
+/**
+ * RationalSEO Admin Styles
+ *
+ * Minimal styling for the settings page.
+ */
+
+.rationalseo-settings {
+	max-width: 800px;
+}
+
+.rationalseo-settings h2 {
+	margin-top: 2em;
+	padding-bottom: 0.5em;
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.rationalseo-settings .form-table th {
+	padding-left: 0;
+}
+
+.rationalseo-settings .form-table td {
+	padding-left: 0;
+}
+
+.rationalseo-settings .description {
+	color: #646970;
+	font-style: italic;
+	margin-top: 4px;
+}
+
+.rationalseo-settings textarea {
+	width: 100%;
+}
+
+.rationalseo-settings input.large-text {
+	width: 100%;
+}
+
+.rationalseo-settings select {
+	min-width: 200px;
+}
