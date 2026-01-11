@@ -87,6 +87,8 @@ class RationalSEO_Frontend {
 		$this->output_robots();
 		$this->output_canonical();
 		$this->output_verification_tags();
+		$this->output_open_graph();
+		$this->output_twitter_cards();
 
 		echo "<!-- /RationalSEO -->\n\n";
 	}
@@ -370,5 +372,103 @@ class RationalSEO_Frontend {
 		if ( ! empty( $bing ) ) {
 			printf( "<meta name=\"msvalidate.01\" content=\"%s\" />\n", esc_attr( $bing ) );
 		}
+	}
+
+	/**
+	 * Output Open Graph meta tags.
+	 */
+	private function output_open_graph() {
+		$locale    = get_locale();
+		$og_type   = is_singular() && ! is_front_page() ? 'article' : 'website';
+		$title     = $this->get_title();
+		$desc      = $this->get_description();
+		$url       = $this->get_canonical();
+		$site_name = $this->settings->get( 'site_name', get_bloginfo( 'name' ) );
+		$image     = $this->get_social_image();
+
+		printf( "<meta property=\"og:locale\" content=\"%s\" />\n", esc_attr( $locale ) );
+		printf( "<meta property=\"og:type\" content=\"%s\" />\n", esc_attr( $og_type ) );
+
+		if ( $title ) {
+			printf( "<meta property=\"og:title\" content=\"%s\" />\n", esc_attr( $title ) );
+		}
+
+		if ( $desc ) {
+			printf( "<meta property=\"og:description\" content=\"%s\" />\n", esc_attr( $desc ) );
+		}
+
+		if ( $url ) {
+			printf( "<meta property=\"og:url\" content=\"%s\" />\n", esc_url( $url ) );
+		}
+
+		if ( $site_name ) {
+			printf( "<meta property=\"og:site_name\" content=\"%s\" />\n", esc_attr( $site_name ) );
+		}
+
+		if ( $image ) {
+			printf( "<meta property=\"og:image\" content=\"%s\" />\n", esc_url( $image ) );
+		}
+	}
+
+	/**
+	 * Output Twitter Card meta tags.
+	 */
+	private function output_twitter_cards() {
+		$card_type = $this->settings->get( 'twitter_card_type', 'summary_large_image' );
+		$title     = $this->get_title();
+		$desc      = $this->get_description();
+		$image     = $this->get_social_image();
+
+		printf( "<meta name=\"twitter:card\" content=\"%s\" />\n", esc_attr( $card_type ) );
+
+		if ( $title ) {
+			printf( "<meta name=\"twitter:title\" content=\"%s\" />\n", esc_attr( $title ) );
+		}
+
+		if ( $desc ) {
+			printf( "<meta name=\"twitter:description\" content=\"%s\" />\n", esc_attr( $desc ) );
+		}
+
+		if ( $image ) {
+			printf( "<meta name=\"twitter:image\" content=\"%s\" />\n", esc_url( $image ) );
+		}
+	}
+
+	/**
+	 * Get social sharing image.
+	 *
+	 * Priority:
+	 * 1. Featured image (if singular post/page)
+	 * 2. Default social image from settings
+	 * 3. Site logo from settings
+	 *
+	 * @return string Image URL or empty string.
+	 */
+	private function get_social_image() {
+		// Try featured image for singular posts/pages.
+		if ( is_singular() ) {
+			$post = get_queried_object();
+			if ( has_post_thumbnail( $post ) ) {
+				$thumbnail_id  = get_post_thumbnail_id( $post );
+				$thumbnail_url = wp_get_attachment_image_url( $thumbnail_id, 'large' );
+				if ( $thumbnail_url ) {
+					return $thumbnail_url;
+				}
+			}
+		}
+
+		// Try default social image from settings.
+		$default_image = $this->settings->get( 'social_default_image' );
+		if ( ! empty( $default_image ) ) {
+			return $default_image;
+		}
+
+		// Try site logo from settings.
+		$site_logo = $this->settings->get( 'site_logo' );
+		if ( ! empty( $site_logo ) ) {
+			return $site_logo;
+		}
+
+		return '';
 	}
 }

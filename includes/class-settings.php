@@ -41,14 +41,16 @@ class RationalSEO_Settings {
 	 */
 	public function get_defaults() {
 		return array(
-			'separator'           => '|',
-			'site_type'           => 'organization',
-			'site_name'           => get_bloginfo( 'name' ),
-			'site_logo'           => '',
-			'verification_google' => '',
-			'verification_bing'   => '',
-			'home_title'          => '',
-			'home_description'    => '',
+			'separator'            => '|',
+			'site_type'            => 'organization',
+			'site_name'            => get_bloginfo( 'name' ),
+			'site_logo'            => '',
+			'verification_google'  => '',
+			'verification_bing'    => '',
+			'home_title'           => '',
+			'home_description'     => '',
+			'social_default_image' => '',
+			'twitter_card_type'    => 'summary_large_image',
 		);
 	}
 

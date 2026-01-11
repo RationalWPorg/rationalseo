@@ -150,6 +150,30 @@ class RationalSEO_Admin {
 			'rationalseo',
 			'rationalseo_homepage'
 		);
+
+		// Social Section.
+		add_settings_section(
+			'rationalseo_social_section',
+			__( 'Social Media', 'rationalseo' ),
+			array( $this, 'render_section_social' ),
+			'rationalseo_social'
+		);
+
+		add_settings_field(
+			'social_default_image',
+			__( 'Default Social Image', 'rationalseo' ),
+			array( $this, 'render_field_social_default_image' ),
+			'rationalseo_social',
+			'rationalseo_social_section'
+		);
+
+		add_settings_field(
+			'twitter_card_type',
+			__( 'Twitter Card Type', 'rationalseo' ),
+			array( $this, 'render_field_twitter_card_type' ),
+			'rationalseo_social',
+			'rationalseo_social_section'
+		);
 	}
 
 	/**
@@ -193,6 +217,14 @@ class RationalSEO_Admin {
 			? sanitize_textarea_field( $input['home_description'] )
 			: '';
 
+		$sanitized['social_default_image'] = isset( $input['social_default_image'] )
+			? esc_url_raw( $input['social_default_image'] )
+			: '';
+
+		$sanitized['twitter_card_type'] = isset( $input['twitter_card_type'] ) && in_array( $input['twitter_card_type'], array( 'summary', 'summary_large_image' ), true )
+			? $input['twitter_card_type']
+			: 'summary_large_image';
+
 		return $sanitized;
 	}
 
@@ -215,20 +247,51 @@ class RationalSEO_Admin {
 	}
 
 	/**
+	 * Get current tab.
+	 *
+	 * @return string
+	 */
+	private function get_current_tab() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'general';
+	}
+
+	/**
 	 * Render settings page.
 	 */
 	public function render_settings_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
+
+		$current_tab = $this->get_current_tab();
+		$tabs        = array(
+			'general' => __( 'General', 'rationalseo' ),
+			'social'  => __( 'Social', 'rationalseo' ),
+		);
 		?>
 		<div class="wrap rationalseo-settings">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
 
+			<nav class="nav-tab-wrapper">
+				<?php foreach ( $tabs as $tab_key => $tab_label ) : ?>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=rationalseo&tab=' . $tab_key ) ); ?>"
+						class="nav-tab <?php echo $current_tab === $tab_key ? 'nav-tab-active' : ''; ?>">
+						<?php echo esc_html( $tab_label ); ?>
+					</a>
+				<?php endforeach; ?>
+			</nav>
+
 			<form action="options.php" method="post">
 				<?php
 				settings_fields( 'rationalseo_settings_group' );
-				do_settings_sections( 'rationalseo' );
+
+				if ( 'social' === $current_tab ) {
+					do_settings_sections( 'rationalseo_social' );
+				} else {
+					do_settings_sections( 'rationalseo' );
+				}
+
 				submit_button( __( 'Save Settings', 'rationalseo' ) );
 				?>
 			</form>
@@ -400,6 +463,47 @@ class RationalSEO_Admin {
 			class="large-text"
 			placeholder="<?php echo esc_attr( get_bloginfo( 'description' ) ); ?>"><?php echo esc_textarea( $value ); ?></textarea>
 		<p class="description"><?php esc_html_e( 'Custom meta description for the homepage. Leave empty to use site tagline.', 'rationalseo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Social section description.
+	 */
+	public function render_section_social() {
+		echo '<p>' . esc_html__( 'Configure Open Graph and Twitter Card settings for social media sharing.', 'rationalseo' ) . '</p>';
+	}
+
+	/**
+	 * Render Default Social Image field.
+	 */
+	public function render_field_social_default_image() {
+		$value = $this->settings->get( 'social_default_image', '' );
+		?>
+		<input type="url"
+			name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[social_default_image]"
+			id="social_default_image"
+			value="<?php echo esc_attr( $value ); ?>"
+			class="large-text"
+			placeholder="https://example.com/image.jpg">
+		<p class="description"><?php esc_html_e( 'Fallback image used when a post or page has no featured image. Recommended size: 1200x630 pixels.', 'rationalseo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render Twitter Card Type field.
+	 */
+	public function render_field_twitter_card_type() {
+		$value = $this->settings->get( 'twitter_card_type', 'summary_large_image' );
+		?>
+		<select name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[twitter_card_type]" id="twitter_card_type">
+			<option value="summary" <?php selected( $value, 'summary' ); ?>>
+				<?php esc_html_e( 'Summary', 'rationalseo' ); ?>
+			</option>
+			<option value="summary_large_image" <?php selected( $value, 'summary_large_image' ); ?>>
+				<?php esc_html_e( 'Summary with Large Image', 'rationalseo' ); ?>
+			</option>
+		</select>
+		<p class="description"><?php esc_html_e( 'Choose how Twitter displays your content when shared.', 'rationalseo' ); ?></p>
 		<?php
 	}
 }

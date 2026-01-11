@@ -228,15 +228,42 @@ array(
 )
 ```
 
-### Phase 2: Open Graph & Twitter Cards (Next)
+### Phase 2: Open Graph & Twitter Cards ✅ COMPLETE
 
-**Objectives:**
-- Add Social tab to settings page
-- Output Open Graph meta tags (og:locale, og:type, og:title, og:url, og:site_name, og:image)
-- Output Twitter Card meta tags (twitter:card, twitter:title, twitter:description, twitter:image)
-- Add settings: Default fallback image URL, Twitter card type toggle
+**Completed Features:**
+- Tab navigation added to admin settings (General / Social tabs)
+- Social tab with settings:
+  - Default Social Image URL (fallback when no featured image)
+  - Twitter Card Type dropdown (Summary / Summary with Large Image)
+- Open Graph meta tag output in frontend:
+  - `og:locale` - Site locale
+  - `og:type` - "website" for homepage, "article" for singular content
+  - `og:title` - Reuses existing title logic
+  - `og:description` - Reuses existing description logic
+  - `og:url` - Reuses canonical URL logic
+  - `og:site_name` - From settings
+  - `og:image` - Featured image → default social image → site logo
+- Twitter Card meta tag output:
+  - `twitter:card` - Configurable (summary_large_image default)
+  - `twitter:title` - Same as og:title
+  - `twitter:description` - Same as og:description
+  - `twitter:image` - Same as og:image
 
-### Phase 3: Post Meta & Editor Integration (Planned)
+**Settings Schema (Phase 2 additions):**
+```php
+array(
+    // ... Phase 1 settings ...
+    'social_default_image' => '',
+    'twitter_card_type'    => 'summary_large_image',
+)
+```
+
+**Files Modified:**
+- `includes/class-settings.php` - Added new defaults
+- `includes/class-admin.php` - Added tab navigation, Social section, fields, sanitization
+- `includes/class-frontend.php` - Added `output_open_graph()`, `output_twitter_cards()`, `get_social_image()`
+
+### Phase 3: Post Meta & Editor Integration (Next)
 
 ### Phase 4: JSON-LD Schema (Planned)
 
