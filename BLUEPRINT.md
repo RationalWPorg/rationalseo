@@ -363,6 +363,51 @@ array(
 **Files Modified:**
 - `includes/class-frontend.php` - Added `output_schema()` method (lines 487-596)
 
-### Phase 5: Sitemaps (Next)
+### Phase 5: XML Sitemaps ✅ COMPLETE
 
-### Phase 6: Redirects (Planned)
+**Completed Features:**
+- Sitemap class (`includes/class-sitemap.php`):
+  - Rewrite rules for `/sitemap.xml` and `/sitemap-{post_type}.xml`
+  - Sitemap index generation listing all post type sitemaps
+  - Per-post-type sitemaps with pagination (1000 URLs max per file)
+  - Transient caching with stale-while-revalidate pattern
+  - Background rebuild via `wp_schedule_single_event`
+  - Cache invalidation on post save/delete
+  - Proper XML headers and `Cache-Control: max-age=3600` headers
+  - Respects `_rationalseo_noindex` post meta
+  - Excludes private/draft posts
+- Sitemaps tab in admin settings:
+  - Enable/disable toggle
+  - Content freshness dropdown (exclude content older than X months)
+  - Post type exclusion checkboxes
+- Activation/deactivation hooks:
+  - Flush rewrite rules on activation
+  - Clear sitemap transients on deactivation
+
+**Settings Schema (Phase 5 additions):**
+```php
+array(
+    // ... Previous settings ...
+    'sitemap_enabled'       => true,
+    'sitemap_max_age'       => 0,      // 0 = all content, or 6/12/24/36 months
+    'sitemap_exclude_types' => array(), // Post types to exclude
+)
+```
+
+**Sitemap URLs:**
+- `https://example.com/sitemap.xml` - Index listing all sub-sitemaps
+- `https://example.com/sitemap-post.xml` - Posts sitemap
+- `https://example.com/sitemap-page.xml` - Pages sitemap
+- `https://example.com/sitemap-{cpt}-{page}.xml` - Paginated custom post type sitemaps
+
+**Files Created:**
+- `includes/class-sitemap.php` - Sitemap generation and caching
+
+**Files Modified:**
+- `rationalseo.php` - Added require for sitemap class
+- `includes/class-rationalseo.php` - Added sitemap property and instantiation
+- `includes/class-settings.php` - Added sitemap defaults
+- `includes/class-admin.php` - Added Sitemaps tab with settings fields
+- `includes/class-activator.php` - Added rewrite flush and cache clearing
+
+### Phase 6: Redirects (Next)
