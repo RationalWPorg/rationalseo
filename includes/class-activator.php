@@ -18,6 +18,7 @@ class RationalSEO_Activator {
 	 */
 	public static function activate() {
 		self::set_default_options();
+		self::create_tables();
 
 		// Register sitemap rewrite rules and flush.
 		if ( class_exists( 'RationalSEO_Sitemap' ) ) {
@@ -26,6 +27,15 @@ class RationalSEO_Activator {
 			$sitemap->register_rewrite_rules();
 		}
 		flush_rewrite_rules();
+	}
+
+	/**
+	 * Create required database tables.
+	 */
+	private static function create_tables() {
+		if ( class_exists( 'RationalSEO_Redirects' ) ) {
+			RationalSEO_Redirects::create_table();
+		}
 	}
 
 	/**

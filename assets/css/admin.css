@@ -39,3 +39,67 @@
 .rationalseo-settings select {
 	min-width: 200px;
 }
+
+/* Redirect Manager */
+.rationalseo-redirect-manager {
+	margin-top: 20px;
+}
+
+.rationalseo-redirects-table {
+	margin-top: 10px;
+}
+
+.rationalseo-redirects-table .column-from {
+	width: 25%;
+}
+
+.rationalseo-redirects-table .column-to {
+	width: 35%;
+}
+
+.rationalseo-redirects-table .column-status {
+	width: 12%;
+}
+
+.rationalseo-redirects-table .column-hits {
+	width: 10%;
+}
+
+.rationalseo-redirects-table .column-actions {
+	width: 18%;
+}
+
+.rationalseo-redirects-table .column-from code {
+	background: #f0f0f1;
+	padding: 2px 6px;
+	border-radius: 3px;
+}
+
+.rationalseo-redirects-table .rationalseo-add-row {
+	background: #f6f7f7;
+}
+
+.rationalseo-redirects-table .rationalseo-add-row input,
+.rationalseo-redirects-table .rationalseo-add-row select {
+	width: 100%;
+	max-width: none;
+}
+
+.rationalseo-redirects-table .no-redirects td {
+	text-align: center;
+	padding: 20px;
+	color: #646970;
+	font-style: italic;
+}
+
+.rationalseo-redirects-table .button-link-delete {
+	color: #b32d2e;
+}
+
+.rationalseo-redirects-table .button-link-delete:hover {
+	color: #a00;
+}
+
+#rationalseo-redirect-message {
+	margin-top: 15px;
+}

@@ -31,6 +31,7 @@ require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-frontend.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-admin.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-meta-box.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-sitemap.php';
+require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-redirects.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-activator.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-rationalseo.php';
 

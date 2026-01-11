@@ -54,6 +54,13 @@ class RationalSEO {
 	private $sitemap;
 
 	/**
+	 * Redirects instance.
+	 *
+	 * @var RationalSEO_Redirects
+	 */
+	private $redirects;
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return RationalSEO
@@ -69,12 +76,13 @@ class RationalSEO {
 	 * Constructor.
 	 */
 	private function __construct() {
-		$this->settings = new RationalSEO_Settings();
-		$this->frontend = new RationalSEO_Frontend( $this->settings );
-		$this->sitemap  = new RationalSEO_Sitemap( $this->settings );
+		$this->settings  = new RationalSEO_Settings();
+		$this->frontend  = new RationalSEO_Frontend( $this->settings );
+		$this->sitemap   = new RationalSEO_Sitemap( $this->settings );
+		$this->redirects = new RationalSEO_Redirects( $this->settings );
 
 		if ( is_admin() ) {
-			$this->admin    = new RationalSEO_Admin( $this->settings );
+			$this->admin    = new RationalSEO_Admin( $this->settings, $this->redirects );
 			$this->meta_box = new RationalSEO_Meta_Box( $this->settings );
 		}
 	}
@@ -122,5 +130,14 @@ class RationalSEO {
 	 */
 	public function get_sitemap() {
 		return $this->sitemap;
+	}
+
+	/**
+	 * Get redirects instance.
+	 *
+	 * @return RationalSEO_Redirects
+	 */
+	public function get_redirects() {
+		return $this->redirects;
 	}
 }
