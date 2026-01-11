@@ -299,8 +299,70 @@ array(
 - `includes/class-rationalseo.php` - Added meta box property and instantiation
 - `includes/class-frontend.php` - Added `_rationalseo_og_image` check in `get_social_image()`
 
-### Phase 4: JSON-LD Schema (Next)
+### Phase 4: JSON-LD Schema ✅ COMPLETE
 
-### Phase 5: Sitemaps (Planned)
+**Completed Features:**
+- JSON-LD structured data output (`includes/class-frontend.php`):
+  - Single `@graph` array linking all entities via `@id` references
+  - Uses `wp_json_encode()` with pretty print for valid output
+- Schema entities:
+  - **Organization/Person**: Based on `site_type` setting, includes optional logo ImageObject
+  - **WebSite**: Always included, links to publisher via `@id`
+  - **WebPage**: Always included, links to WebSite via `isPartOf`
+  - **Article**: On singular posts/pages (not front page), includes:
+    - `headline` - From `get_title()`
+    - `description` - From `get_description()`
+    - `datePublished` / `dateModified` - ISO 8601 format
+    - `author` - Person type with display name
+    - `image` - ImageObject when social image available
+    - `mainEntityOfPage` - Links to WebPage
+    - `publisher` - Links to Organization/Person
+
+**Example Output:**
+```html
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "Organization",
+            "@id": "https://example.com/#organization",
+            "name": "Site Name",
+            "logo": { "@type": "ImageObject", "@id": "https://example.com/#logo", "url": "..." }
+        },
+        {
+            "@type": "WebSite",
+            "@id": "https://example.com/#website",
+            "url": "https://example.com/",
+            "name": "Site Name",
+            "publisher": { "@id": "https://example.com/#organization" }
+        },
+        {
+            "@type": "WebPage",
+            "@id": "https://example.com/page/#webpage",
+            "url": "https://example.com/page/",
+            "isPartOf": { "@id": "https://example.com/#website" }
+        },
+        {
+            "@type": "Article",
+            "@id": "https://example.com/page/#article",
+            "headline": "Page Title",
+            "mainEntityOfPage": { "@id": "https://example.com/page/#webpage" },
+            "publisher": { "@id": "https://example.com/#organization" },
+            "datePublished": "2024-01-15T10:00:00+00:00",
+            "dateModified": "2024-01-16T14:30:00+00:00",
+            "description": "...",
+            "author": { "@type": "Person", "name": "Author Name" },
+            "image": { "@type": "ImageObject", "@id": "https://example.com/page/#primaryimage", "url": "..." }
+        }
+    ]
+}
+</script>
+```
+
+**Files Modified:**
+- `includes/class-frontend.php` - Added `output_schema()` method (lines 487-596)
+
+### Phase 5: Sitemaps (Next)
 
 ### Phase 6: Redirects (Planned)
