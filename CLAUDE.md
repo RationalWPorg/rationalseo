@@ -7,7 +7,7 @@ RationalWP is a suite of practical, no-bloat WordPress plugins built for profess
 - All development-related `npm` and `npx` commandds MUST be prefixed with `NODE_ENV=development`
 
 ### WordPress
-**URL:** https://rationalwp.local/wp-admin/
+**URL:** https://development.local/wp-admin/
 **Username:** claude
 **Password:** &FKHRV4znkXt*SWn5k%IYTmN
 
