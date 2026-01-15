@@ -72,8 +72,8 @@ class RationalSEO_Import_Manager {
 	 * @param RationalSEO_Import_Manager $manager The import manager instance.
 	 */
 	public function register_core_importers( $manager ) {
-		// Core importers will be registered here in Phase 3.
-		// Example: $manager->register( new RationalSEO_Yoast_Importer( $this->settings ) );
+		// Register Yoast SEO importer.
+		$manager->register( new RationalSEO_Yoast_Importer( $this->settings ) );
 	}
 
 	/**
