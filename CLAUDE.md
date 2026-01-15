@@ -119,7 +119,7 @@ See **RationalCleanup** for the canonical implementation: Clean singleton patter
 ## Import System Architecture (RationalSEO)
 
 ### Overview
-RationalSEO includes a plugin-agnostic import framework for migrating SEO data from other plugins (Yoast, RankMath, AIOSEO).
+RationalSEO includes a plugin-agnostic import framework for migrating SEO data from other plugins (Yoast, RankMath, AIOSEO, SEOPress).
 
 ### Key Components
 - **`RationalSEO_Importer_Interface`**: Contract all importers must implement
@@ -281,5 +281,50 @@ AIOSEO uses `#variable` (hash prefix) syntax. Supported conversions:
 **Important:** AIOSEO options are stored as JSON in `aioseo_options`. Use `get_option_value()` helper with dot notation to access nested values.
 
 **Batch Processing:** Post imports in batches of 100 to avoid timeouts.
+
+**Options:** `skip_existing` - Skip posts/redirects that already have RationalSEO data.
+
+### SEOPress Importer (Implemented)
+The SEOPress importer (`class-seopress-importer.php`) handles:
+
+**Post Meta Import:**
+| SEOPress Key | RationalSEO Key | Notes |
+|--------------|-----------------|-------|
+| `_seopress_titles_title` | `_rationalseo_title` | Direct copy |
+| `_seopress_titles_desc` | `_rationalseo_desc` | Direct copy |
+| `_seopress_robots_canonical` | `_rationalseo_canonical` | Direct copy |
+| `_seopress_robots_index` | `_rationalseo_noindex` | 'yes'→'1' |
+| `_seopress_social_fb_img` | `_rationalseo_og_image` | Direct copy |
+
+**Redirects Import:**
+- Source: Post meta keys (`_seopress_redirections_*`) - unique approach
+- SEOPress stores redirects as post meta, not in a separate table
+- Source URL is the post's permalink
+- Status codes: 301, 302, 307
+
+**Settings Import (from 3 separate options):**
+| SEOPress Source | SEOPress Key | RationalSEO Key |
+|-----------------|--------------|-----------------|
+| `seopress_titles_option_name` | `seopress_titles_sep` | `separator` |
+| `seopress_titles_option_name` | `seopress_titles_home_site_title` | `home_title` (with variable conversion) |
+| `seopress_titles_option_name` | `seopress_titles_home_site_desc` | `home_description` (with variable conversion) |
+| `seopress_social_option_name` | `seopress_social_facebook_img` | `social_default_image` |
+| `seopress_social_option_name` | `seopress_social_twitter_card_img_size` | `twitter_card_type` |
+| `seopress_social_option_name` | `seopress_social_knowledge_img` | `site_logo` |
+| `seopress_advanced_option_name` | `seopress_advanced_advanced_google` | `verification_google` |
+| `seopress_advanced_option_name` | `seopress_advanced_advanced_bing` | `verification_bing` |
+
+**SEOPress Variable Conversion:**
+SEOPress uses `%%variable%%` (double percent) syntax, same as Yoast. Supported conversions:
+- `%%sitetitle%%`, `%%sitename%%` → Site name
+- `%%tagline%%`, `%%sitedesc%%` → Site tagline
+- `%%sep%%` → Title separator
+- `%%currentyear%%`, `%%currentmonth%%`, `%%currentday%%`, `%%currentdate%%` → Date values
+- `%%page%%`, `%%current_pagination%%` → Empty (for static content)
+- Post-specific variables (%%title%%, %%excerpt%%, etc.) cause the value to be skipped
+
+**Important:** SEOPress stores noindex as 'yes' string (not '1' like other plugins).
+
+**Batch Processing:** Post meta imports in batches of 100 to avoid timeouts.
 
 **Options:** `skip_existing` - Skip posts/redirects that already have RationalSEO data.

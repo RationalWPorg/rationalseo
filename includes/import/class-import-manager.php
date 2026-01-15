@@ -80,6 +80,9 @@ class RationalSEO_Import_Manager {
 
 		// Register AIOSEO importer.
 		$manager->register( new RationalSEO_AIOSEO_Importer( $this->settings ) );
+
+		// Register SEOPress importer.
+		$manager->register( new RationalSEO_SEOPress_Importer( $this->settings ) );
 	}
 
 	/**
