@@ -28,14 +28,23 @@ class RationalSEO_Admin {
 	private $redirects;
 
 	/**
+	 * Import manager instance.
+	 *
+	 * @var RationalSEO_Import_Manager
+	 */
+	private $import_manager;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param RationalSEO_Settings  $settings  Settings instance.
-	 * @param RationalSEO_Redirects $redirects Redirects instance.
+	 * @param RationalSEO_Settings       $settings       Settings instance.
+	 * @param RationalSEO_Redirects      $redirects      Redirects instance.
+	 * @param RationalSEO_Import_Manager $import_manager Import manager instance.
 	 */
-	public function __construct( RationalSEO_Settings $settings, RationalSEO_Redirects $redirects = null ) {
-		$this->settings  = $settings;
-		$this->redirects = $redirects;
+	public function __construct( RationalSEO_Settings $settings, RationalSEO_Redirects $redirects = null, RationalSEO_Import_Manager $import_manager = null ) {
+		$this->settings       = $settings;
+		$this->redirects      = $redirects;
+		$this->import_manager = $import_manager;
 		$this->init_hooks();
 	}
 
@@ -349,6 +358,7 @@ class RationalSEO_Admin {
 			'social'    => __( 'Social', 'rationalseo' ),
 			'sitemaps'  => __( 'Sitemaps', 'rationalseo' ),
 			'redirects' => __( 'Redirects', 'rationalseo' ),
+			'import'    => __( 'Import', 'rationalseo' ),
 		);
 		?>
 		<div class="wrap rationalseo-settings">
@@ -363,7 +373,9 @@ class RationalSEO_Admin {
 				<?php endforeach; ?>
 			</nav>
 
-			<?php if ( 'redirects' === $current_tab ) : ?>
+			<?php if ( 'import' === $current_tab ) : ?>
+				<?php $this->render_import_tab(); ?>
+			<?php elseif ( 'redirects' === $current_tab ) : ?>
 				<form action="options.php" method="post">
 					<?php
 					settings_fields( 'rationalseo_settings_group' );
@@ -728,6 +740,19 @@ class RationalSEO_Admin {
 		</label>
 		<p class="description"><?php esc_html_e( 'When enabled, changing a published post\'s URL slug will automatically create a 301 redirect from the old URL to the new one.', 'rationalseo' ); ?></p>
 		<?php
+	}
+
+	/**
+	 * Render the import tab content.
+	 */
+	private function render_import_tab() {
+		// Delegate to the import admin if available.
+		$import_admin = RationalSEO::get_instance()->get_import_admin();
+		if ( $import_admin ) {
+			$import_admin->render_import_tab();
+		} else {
+			echo '<p>' . esc_html__( 'Import system not available.', 'rationalseo' ) . '</p>';
+		}
 	}
 
 	/**
