@@ -50,6 +50,8 @@ class RationalSEO_Redirects {
 		// Admin AJAX handlers.
 		add_action( 'wp_ajax_rationalseo_add_redirect', array( $this, 'ajax_add_redirect' ) );
 		add_action( 'wp_ajax_rationalseo_delete_redirect', array( $this, 'ajax_delete_redirect' ) );
+		add_action( 'wp_ajax_rationalseo_preview_yoast_import', array( $this, 'ajax_preview_yoast_import' ) );
+		add_action( 'wp_ajax_rationalseo_import_yoast_redirects', array( $this, 'ajax_import_yoast_redirects' ) );
 	}
 
 	/**
@@ -470,5 +472,291 @@ class RationalSEO_Redirects {
 		}
 
 		wp_send_json_success( array( 'message' => __( 'Redirect deleted successfully.', 'rationalseo' ) ) );
+	}
+
+	/**
+	 * Get Yoast SEO Premium redirects from wp_options.
+	 *
+	 * Yoast stores redirects in various option keys depending on version.
+	 *
+	 * @return array Array of Yoast redirect objects, or empty array if none found.
+	 */
+	public function get_yoast_redirects() {
+		$redirects = array();
+
+		// Try different option keys Yoast has used over versions.
+		$option_keys = array(
+			'wpseo-premium-redirects-base',
+			'wpseo_redirect',
+			'wpseo-premium-redirects-export-plain',
+		);
+
+		foreach ( $option_keys as $key ) {
+			$yoast_redirects = get_option( $key, array() );
+			if ( ! empty( $yoast_redirects ) && is_array( $yoast_redirects ) ) {
+				$redirects = $yoast_redirects;
+				break;
+			}
+		}
+
+		// If still empty, try to find any wpseo redirect options.
+		if ( empty( $redirects ) ) {
+			global $wpdb;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$option_row = $wpdb->get_row(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE 'wpseo%redirect%' AND option_value != '' LIMIT 1"
+			);
+			if ( $option_row && ! empty( $option_row->option_value ) ) {
+				$maybe_redirects = maybe_unserialize( $option_row->option_value );
+				if ( is_array( $maybe_redirects ) ) {
+					$redirects = $maybe_redirects;
+				}
+			}
+		}
+
+		return $redirects;
+	}
+
+	/**
+	 * Parse Yoast redirect data into a normalized format.
+	 *
+	 * @param array $yoast_redirects Raw Yoast redirects array.
+	 * @return array Normalized redirects with url_from, url_to, status_code, is_regex keys.
+	 */
+	private function parse_yoast_redirects( $yoast_redirects ) {
+		$parsed = array();
+
+		foreach ( $yoast_redirects as $key => $redirect ) {
+			// Handle different Yoast formats.
+			// Format 1: Array with 'origin', 'url', 'type', 'format' keys (indexed array).
+			// Format 2: Key is the origin URL, value is array with 'url', 'type' (associative).
+			$url_from    = '';
+			$url_to      = '';
+			$status_code = 301;
+			$is_regex    = false;
+
+			if ( isset( $redirect['origin'] ) ) {
+				// Format 1: Standard Yoast format (wpseo-premium-redirects-base).
+				$url_from    = isset( $redirect['origin'] ) ? $redirect['origin'] : '';
+				$url_to      = isset( $redirect['url'] ) ? $redirect['url'] : '';
+				$status_code = isset( $redirect['type'] ) ? absint( $redirect['type'] ) : 301;
+				$is_regex    = isset( $redirect['format'] ) && 'regex' === $redirect['format'];
+			} elseif ( is_string( $key ) && isset( $redirect['url'] ) ) {
+				// Format 2: Key-based format (wpseo-premium-redirects-export-plain).
+				$url_from    = $key;
+				$url_to      = isset( $redirect['url'] ) ? $redirect['url'] : '';
+				$status_code = isset( $redirect['type'] ) ? absint( $redirect['type'] ) : 301;
+				$is_regex    = false; // This format doesn't typically use regex.
+			}
+
+			// Skip empty or invalid entries.
+			if ( empty( $url_from ) ) {
+				continue;
+			}
+
+			// For non-410, require a destination.
+			if ( 410 !== $status_code && empty( $url_to ) ) {
+				continue;
+			}
+
+			// Validate status code.
+			$valid_codes = array( 301, 302, 307, 410 );
+			if ( ! in_array( $status_code, $valid_codes, true ) ) {
+				$status_code = 301;
+			}
+
+			$parsed[] = array(
+				'url_from'    => sanitize_text_field( $url_from ),
+				'url_to'      => esc_url_raw( $url_to ),
+				'status_code' => $status_code,
+				'is_regex'    => $is_regex,
+			);
+		}
+
+		return $parsed;
+	}
+
+	/**
+	 * Check if a redirect already exists in our table.
+	 *
+	 * @param string $url_from Source URL path.
+	 * @param bool   $is_regex Whether this is a regex redirect.
+	 * @return bool True if exists, false otherwise.
+	 */
+	public function redirect_exists( $url_from, $is_regex = false ) {
+		// Normalize non-regex URLs for comparison.
+		if ( ! $is_regex ) {
+			$url_from = '/' . ltrim( $url_from, '/' );
+			if ( strlen( $url_from ) > 1 ) {
+				$url_from = rtrim( $url_from, '/' );
+			}
+		}
+
+		$existing = $this->get_redirect_by_from( $url_from );
+		return ! empty( $existing );
+	}
+
+	/**
+	 * AJAX handler for previewing Yoast redirect import.
+	 */
+	public function ajax_preview_yoast_import() {
+		check_ajax_referer( 'rationalseo_redirects', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'rationalseo' ) ) );
+		}
+
+		$yoast_redirects = $this->get_yoast_redirects();
+
+		if ( empty( $yoast_redirects ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'No Yoast SEO Premium redirects found. Make sure Yoast SEO Premium is installed and has redirects configured.', 'rationalseo' ),
+				)
+			);
+		}
+
+		$parsed = $this->parse_yoast_redirects( $yoast_redirects );
+
+		if ( empty( $parsed ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'No valid redirects found in Yoast data.', 'rationalseo' ),
+				)
+			);
+		}
+
+		// Check for duplicates.
+		$to_import = array();
+		$duplicates = array();
+
+		foreach ( $parsed as $redirect ) {
+			if ( $this->redirect_exists( $redirect['url_from'], $redirect['is_regex'] ) ) {
+				$duplicates[] = $redirect;
+			} else {
+				$to_import[] = $redirect;
+			}
+		}
+
+		wp_send_json_success(
+			array(
+				'to_import'   => $to_import,
+				'duplicates'  => $duplicates,
+				'total_found' => count( $parsed ),
+				'message'     => sprintf(
+					/* translators: 1: Number of redirects to import, 2: Number of duplicates to skip */
+					__( 'Found %1$d redirects to import (%2$d duplicates will be skipped).', 'rationalseo' ),
+					count( $to_import ),
+					count( $duplicates )
+				),
+			)
+		);
+	}
+
+	/**
+	 * AJAX handler for importing Yoast redirects.
+	 */
+	public function ajax_import_yoast_redirects() {
+		check_ajax_referer( 'rationalseo_redirects', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'rationalseo' ) ) );
+		}
+
+		$yoast_redirects = $this->get_yoast_redirects();
+
+		if ( empty( $yoast_redirects ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'No Yoast SEO Premium redirects found.', 'rationalseo' ),
+				)
+			);
+		}
+
+		$parsed = $this->parse_yoast_redirects( $yoast_redirects );
+
+		if ( empty( $parsed ) ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'No valid redirects found in Yoast data.', 'rationalseo' ),
+				)
+			);
+		}
+
+		$imported = 0;
+		$skipped  = 0;
+		$failed   = 0;
+		$imported_redirects = array();
+
+		foreach ( $parsed as $redirect ) {
+			// Skip duplicates.
+			if ( $this->redirect_exists( $redirect['url_from'], $redirect['is_regex'] ) ) {
+				$skipped++;
+				continue;
+			}
+
+			// Validate regex pattern if needed.
+			if ( $redirect['is_regex'] ) {
+				$test_pattern = '~^' . str_replace( '~', '\~', $redirect['url_from'] ) . '$~';
+				// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				if ( @preg_match( $test_pattern, '' ) === false ) {
+					$failed++;
+					continue;
+				}
+			}
+
+			$id = $this->add_redirect(
+				$redirect['url_from'],
+				$redirect['url_to'],
+				$redirect['status_code'],
+				$redirect['is_regex']
+			);
+
+			if ( false !== $id ) {
+				$imported++;
+				// Normalize url_from for display.
+				$display_from = $redirect['url_from'];
+				if ( ! $redirect['is_regex'] ) {
+					$display_from = '/' . ltrim( $display_from, '/' );
+					if ( strlen( $display_from ) > 1 ) {
+						$display_from = rtrim( $display_from, '/' );
+					}
+				}
+				$imported_redirects[] = array(
+					'id'          => $id,
+					'url_from'    => $display_from,
+					'url_to'      => $redirect['url_to'],
+					'status_code' => $redirect['status_code'],
+					'is_regex'    => $redirect['is_regex'] ? 1 : 0,
+					'count'       => 0,
+				);
+			} else {
+				$failed++;
+			}
+		}
+
+		if ( 0 === $imported ) {
+			wp_send_json_error(
+				array(
+					'message' => __( 'No redirects were imported. They may all be duplicates or invalid.', 'rationalseo' ),
+				)
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'imported'  => $imported,
+				'skipped'   => $skipped,
+				'failed'    => $failed,
+				'redirects' => $imported_redirects,
+				'message'   => sprintf(
+					/* translators: 1: Number imported, 2: Number skipped, 3: Number failed */
+					__( 'Successfully imported %1$d redirects. Skipped %2$d duplicates. %3$d failed.', 'rationalseo' ),
+					$imported,
+					$skipped,
+					$failed
+				),
+			)
+		);
 	}
 }
