@@ -61,6 +61,20 @@ class RationalSEO {
 	private $redirects;
 
 	/**
+	 * Import manager instance.
+	 *
+	 * @var RationalSEO_Import_Manager
+	 */
+	private $import_manager;
+
+	/**
+	 * Import admin instance.
+	 *
+	 * @var RationalSEO_Import_Admin
+	 */
+	private $import_admin;
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return RationalSEO
@@ -76,14 +90,16 @@ class RationalSEO {
 	 * Constructor.
 	 */
 	private function __construct() {
-		$this->settings  = new RationalSEO_Settings();
-		$this->frontend  = new RationalSEO_Frontend( $this->settings );
-		$this->sitemap   = new RationalSEO_Sitemap( $this->settings );
-		$this->redirects = new RationalSEO_Redirects( $this->settings );
+		$this->settings       = new RationalSEO_Settings();
+		$this->frontend       = new RationalSEO_Frontend( $this->settings );
+		$this->sitemap        = new RationalSEO_Sitemap( $this->settings );
+		$this->redirects      = new RationalSEO_Redirects( $this->settings );
+		$this->import_manager = new RationalSEO_Import_Manager( $this->settings );
 
 		if ( is_admin() ) {
-			$this->admin    = new RationalSEO_Admin( $this->settings, $this->redirects );
-			$this->meta_box = new RationalSEO_Meta_Box( $this->settings );
+			$this->admin        = new RationalSEO_Admin( $this->settings, $this->redirects, $this->import_manager );
+			$this->meta_box     = new RationalSEO_Meta_Box( $this->settings );
+			$this->import_admin = new RationalSEO_Import_Admin( $this->import_manager );
 		}
 	}
 
@@ -139,5 +155,23 @@ class RationalSEO {
 	 */
 	public function get_redirects() {
 		return $this->redirects;
+	}
+
+	/**
+	 * Get import manager instance.
+	 *
+	 * @return RationalSEO_Import_Manager
+	 */
+	public function get_import_manager() {
+		return $this->import_manager;
+	}
+
+	/**
+	 * Get import admin instance.
+	 *
+	 * @return RationalSEO_Import_Admin|null
+	 */
+	public function get_import_admin() {
+		return $this->import_admin;
 	}
 }

@@ -62,9 +62,17 @@ pluginname/
 ├── .distignore                 # Exclude dev files from distribution
 ├── includes/
 │   ├── rationalwp-admin-menu.php   # Shared menu (copy from RationalCleanup)
-│   └── class-*.php            # Plugin classes (if needed)
+│   ├── class-*.php            # Plugin classes (if needed)
+│   └── import/                # Import system (RationalSEO)
+│       ├── interface-importer.php      # Importer contract
+│       ├── class-import-result.php     # Result data object
+│       ├── class-import-manager.php    # Registry & orchestration
+│       ├── class-import-admin.php      # Admin UI & AJAX
+│       └── importers/                  # Individual importer implementations
+│           └── class-yoast-importer.php
 ├── assets/
-│   └── css/admin.css          # Admin styles only
+│   ├── css/admin.css          # Admin styles only
+│   └── css/import.css         # Import system styles
 └── tests/                     # PHPUnit tests (dev only, excluded from dist)
 ```
 
@@ -107,3 +115,37 @@ Run `./build.sh` to create distribution zip excluding:
 
 ## Reference Implementation
 See **RationalCleanup** for the canonical implementation: Clean singleton pattern, comprehensive Settings API usage, shared menu integration, and proper WordPress.org structure.
+
+## Import System Architecture (RationalSEO)
+
+### Overview
+RationalSEO includes a plugin-agnostic import framework for migrating SEO data from other plugins (Yoast, RankMath, AIOSEO).
+
+### Key Components
+- **`RationalSEO_Importer_Interface`**: Contract all importers must implement
+- **`RationalSEO_Import_Result`**: Fluent result object with counts and messages
+- **`RationalSEO_Import_Manager`**: Registry for importers, fires `rationalseo_register_importers` action
+- **`RationalSEO_Import_Admin`**: Admin UI with AJAX handlers
+
+### Creating an Importer
+```php
+class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
+    public function get_slug() { return 'yoast'; }
+    public function get_name() { return 'Yoast SEO'; }
+    public function get_description() { return 'Import from Yoast SEO'; }
+    public function is_available() { /* check for Yoast data */ }
+    public function get_importable_items() { /* return counts */ }
+    public function preview( $item_types ) { /* return preview */ }
+    public function import( $item_types, $options ) { /* perform import */ }
+}
+
+// Register via action hook
+add_action( 'rationalseo_register_importers', function( $manager ) {
+    $manager->register( new RationalSEO_Yoast_Importer() );
+} );
+```
+
+### Import Tab
+Located at: RationalWP > SEO > Import tab
+- Shows available importers as cards with item counts
+- Modal workflow: Preview → Select types → Import → Results

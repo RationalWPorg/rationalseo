@@ -1,0 +1,248 @@
+/**
+ * RationalSEO Import Styles
+ *
+ * Styles for the import system UI.
+ */
+
+/* Import Tab Container */
+.rationalseo-import-wrap {
+	max-width: 900px;
+}
+
+.rationalseo-import-wrap h2 {
+	margin-top: 0;
+	margin-bottom: 0.5em;
+}
+
+.rationalseo-import-wrap > .description {
+	margin-bottom: 20px;
+	color: #646970;
+}
+
+/* Loading State */
+.rationalseo-import-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 40px 20px;
+	color: #646970;
+}
+
+.rationalseo-import-loading .spinner {
+	float: none;
+	margin: 0;
+}
+
+/* Empty State */
+.rationalseo-import-empty {
+	text-align: center;
+	padding: 40px 20px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.rationalseo-import-empty .dashicons {
+	font-size: 48px;
+	width: 48px;
+	height: 48px;
+	color: #c3c4c7;
+	margin-bottom: 15px;
+}
+
+.rationalseo-import-empty p {
+	margin: 0 0 10px;
+	color: #50575e;
+}
+
+.rationalseo-import-empty .description {
+	color: #646970;
+	font-size: 13px;
+}
+
+/* Import Grid */
+.rationalseo-import-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 20px;
+}
+
+/* Import Card */
+.rationalseo-import-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	display: flex;
+	flex-direction: column;
+}
+
+.rationalseo-import-card-header {
+	padding: 15px 20px;
+	border-bottom: 1px solid #dcdcde;
+	background: #f6f7f7;
+}
+
+.rationalseo-import-card-header h3 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+}
+
+.rationalseo-import-card-body {
+	padding: 15px 20px;
+	flex: 1;
+}
+
+.rationalseo-import-card-body .description {
+	margin: 0 0 15px;
+	color: #646970;
+	font-size: 13px;
+}
+
+.rationalseo-import-items {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.rationalseo-import-items li {
+	padding: 5px 0;
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.rationalseo-import-items li .dashicons {
+	color: #00a32a;
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.rationalseo-import-items li.no-items {
+	color: #646970;
+	font-style: italic;
+}
+
+.rationalseo-import-items li strong {
+	margin-left: auto;
+	color: #1d2327;
+}
+
+.rationalseo-import-card-footer {
+	padding: 15px 20px;
+	border-top: 1px solid #dcdcde;
+	background: #f6f7f7;
+}
+
+.rationalseo-import-card-footer .button {
+	width: 100%;
+}
+
+/* Import Modal Extensions */
+.rationalseo-import-modal-content {
+	max-width: 600px;
+}
+
+.rationalseo-import-preview {
+	font-size: 13px;
+}
+
+.rationalseo-import-options {
+	margin-bottom: 20px;
+	padding: 15px;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.rationalseo-import-options label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+}
+
+.rationalseo-import-preview h4 {
+	margin: 0 0 10px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+/* Import Type Selection */
+.rationalseo-import-type-list {
+	margin-bottom: 20px;
+}
+
+.rationalseo-import-type-item {
+	display: flex;
+	align-items: center;
+	padding: 10px 15px;
+	margin-bottom: 5px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: border-color 0.15s ease;
+}
+
+.rationalseo-import-type-item:hover {
+	border-color: #2271b1;
+}
+
+.rationalseo-import-type-item input[type="checkbox"] {
+	margin: 0 10px 0 0;
+}
+
+.rationalseo-import-type-label {
+	flex: 1;
+	font-weight: 500;
+}
+
+.rationalseo-import-type-count {
+	color: #646970;
+	font-size: 12px;
+}
+
+/* Preview Data */
+.rationalseo-import-preview-data {
+	max-height: 300px;
+	overflow-y: auto;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.rationalseo-import-preview-section {
+	padding: 10px;
+}
+
+.rationalseo-import-preview-section h5 {
+	margin: 0 0 10px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.rationalseo-import-preview-section table {
+	margin: 0;
+	border: none;
+	font-size: 12px;
+}
+
+.rationalseo-import-preview-section th,
+.rationalseo-import-preview-section td {
+	padding: 6px 10px;
+}
+
+.rationalseo-import-preview-section td.more-items {
+	text-align: center;
+	color: #646970;
+	font-style: italic;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+	.rationalseo-import-grid {
+		grid-template-columns: 1fr;
+	}
+}
