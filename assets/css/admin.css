@@ -40,6 +40,16 @@
 	min-width: 200px;
 }
 
+/* Settings Save Message */
+#rationalseo-settings-message {
+	margin: 15px 0;
+}
+
+/* Hide default WordPress settings-updated notice */
+.rationalseo-settings > .notice:not(#rationalseo-settings-message) {
+	display: none;
+}
+
 /* Redirect Manager */
 .rationalseo-redirect-manager {
 	margin-top: 20px;
