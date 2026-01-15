@@ -133,3 +133,150 @@
 	border-radius: 3px;
 	text-transform: uppercase;
 }
+
+/* Redirect Manager Header */
+.rationalseo-redirect-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 2em;
+	padding-bottom: 0.5em;
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.rationalseo-redirect-header h2 {
+	margin: 0;
+	padding: 0;
+	border: none;
+}
+
+/* Import Modal */
+.rationalseo-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 100000;
+	align-items: center;
+	justify-content: center;
+}
+
+.rationalseo-modal-content {
+	background: #fff;
+	border-radius: 4px;
+	box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+	max-width: 700px;
+	width: 90%;
+	max-height: 80vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.rationalseo-modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 15px 20px;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.rationalseo-modal-header h3 {
+	margin: 0;
+	font-size: 16px;
+}
+
+.rationalseo-modal-close {
+	background: none;
+	border: none;
+	font-size: 24px;
+	cursor: pointer;
+	color: #646970;
+	padding: 0;
+	line-height: 1;
+}
+
+.rationalseo-modal-close:hover {
+	color: #1d2327;
+}
+
+.rationalseo-modal-body {
+	padding: 20px;
+	overflow-y: auto;
+	flex: 1;
+}
+
+.rationalseo-modal-body h4 {
+	margin: 20px 0 10px;
+	font-size: 14px;
+}
+
+.rationalseo-modal-body h4:first-child {
+	margin-top: 0;
+}
+
+.rationalseo-modal-footer {
+	padding: 15px 20px;
+	border-top: 1px solid #dcdcde;
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+
+#rationalseo-import-loading {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 20px;
+	justify-content: center;
+}
+
+#rationalseo-import-loading .spinner {
+	float: none;
+	margin: 0;
+}
+
+.rationalseo-import-table-wrap {
+	max-height: 200px;
+	overflow-y: auto;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.rationalseo-import-table-wrap table {
+	margin: 0;
+	border: none;
+}
+
+.rationalseo-import-table-wrap th,
+.rationalseo-import-table-wrap td {
+	padding: 8px 12px;
+	font-size: 13px;
+}
+
+.rationalseo-import-table-wrap code {
+	background: #f0f0f1;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-size: 12px;
+}
+
+#rationalseo-import-summary {
+	font-size: 14px;
+	margin: 0 0 15px;
+	color: #1d2327;
+}
+
+#rationalseo-import-error,
+#rationalseo-import-result .notice {
+	margin: 0;
+}
+
+#rationalseo-import-duplicates {
+	margin-top: 20px;
+}
+
+#rationalseo-import-duplicates h4 {
+	color: #996800;
+}
