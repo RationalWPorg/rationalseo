@@ -168,9 +168,16 @@ The Yoast importer (`class-yoast-importer.php`) handles:
 - Status codes: 301, 302, 307, 410 (skips 451)
 
 **Settings Import:**
-- Separator (converts `sc-*` codes to actual characters)
-- Home title and description (converts `%%variable%%` syntax to actual values)
-- Default social image
+| Yoast Source | Yoast Key | RationalSEO Key |
+|--------------|-----------|-----------------|
+| `wpseo_titles` | `separator` | `separator` (converts `sc-*` codes) |
+| `wpseo_titles` | `title-home-wpseo` | `home_title` (with variable conversion) |
+| `wpseo_titles` | `metadesc-home-wpseo` | `home_description` (with variable conversion) |
+| `wpseo_social` | `og_default_image` | `social_default_image` |
+| `wpseo_social` | `twitter_card_type` | `twitter_card_type` |
+| `wpseo_titles` | `company_logo` | `site_logo` |
+| `wpseo` | `googleverify` | `verification_google` |
+| `wpseo` | `msverify` | `verification_bing` |
 
 **Yoast Variable Conversion:**
 Since RationalSEO doesn't support template variables, Yoast variables are converted during import:
@@ -180,6 +187,52 @@ Since RationalSEO doesn't support template variables, Yoast variables are conver
 - `%%currentyear%%`, `%%current_year%%` → Current year
 - `%%currentmonth%%`, `%%current_month%%` → Current month
 - Post-specific variables (%%title%%, %%excerpt%%, etc.) cause the value to be skipped
+
+**Batch Processing:** Post meta imports in batches of 100 to avoid timeouts.
+
+**Options:** `skip_existing` - Skip posts/redirects that already have RationalSEO data.
+
+### Rank Math Importer (Implemented)
+The Rank Math importer (`class-rankmath-importer.php`) handles:
+
+**Post Meta Import:**
+| Rank Math Key | RationalSEO Key | Notes |
+|---------------|-----------------|-------|
+| `rank_math_title` | `_rationalseo_title` | Direct copy |
+| `rank_math_description` | `_rationalseo_desc` | Direct copy |
+| `rank_math_canonical_url` | `_rationalseo_canonical` | Direct copy |
+| `rank_math_robots` | `_rationalseo_noindex` | Checks array for 'noindex' |
+| `rank_math_facebook_image` | `_rationalseo_og_image` | Direct copy |
+
+**Redirects Import:**
+- Source: `wp_rank_math_redirections` database table
+- Supports comparison types: exact, regex, contains, start, end
+- Contains/start/end patterns are converted to regex
+- Status codes: 301, 302, 307, 410
+
+**Settings Import:**
+| Rank Math Source | Rank Math Key | RationalSEO Key |
+|------------------|---------------|-----------------|
+| `rank-math-options-titles` | `title_separator` | `separator` |
+| `rank-math-options-titles` | `homepage_title` | `home_title` (with variable conversion) |
+| `rank-math-options-titles` | `homepage_description` | `home_description` (with variable conversion) |
+| `rank-math-options-titles` | `open_graph_image` | `social_default_image` |
+| `rank-math-options-titles` | `twitter_card_type` | `twitter_card_type` |
+| `rank-math-options-titles` | `knowledgegraph_logo` | `site_logo` |
+| `rank-math-options-general` | `google_verify` | `verification_google` |
+| `rank-math-options-general` | `bing_verify` | `verification_bing` |
+
+**Rank Math Variable Conversion:**
+Rank Math uses `%variable%` (single percent) syntax. Supported conversions:
+- `%sitename%`, `%site_title%` → Site name
+- `%sitedesc%` → Site tagline
+- `%sep%`, `%separator%` → Title separator
+- `%currentyear%`, `%currentmonth%`, `%currentday%`, `%currentdate%` → Date values
+- `%currenttime%`, `%currenttime(format)%` → Time values (custom PHP format supported)
+- `%org_name%`, `%org_url%`, `%org_logo%` → Organization info from Local SEO settings
+- Post-specific variables (%title%, %excerpt%, etc.) cause the value to be skipped
+
+**Important:** Rank Math option names use **hyphens** (`rank-math-options-titles`), not underscores.
 
 **Batch Processing:** Post meta imports in batches of 100 to avoid timeouts.
 
