@@ -40,6 +40,9 @@ require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/class-import-result.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/class-import-manager.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/class-import-admin.php';
 
+// Load importers.
+require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-yoast-importer.php';
+
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-rationalseo.php';
 
 // Register activation and deactivation hooks.

@@ -10,7 +10,6 @@
 }
 
 .rationalseo-import-wrap h2 {
-	margin-top: 0;
 	margin-bottom: 0.5em;
 }
 
@@ -238,6 +237,21 @@
 	text-align: center;
 	color: #646970;
 	font-style: italic;
+}
+
+/* Modal Notices */
+.rationalseo-import-modal-content .rationalseo-modal-body {
+	position: relative;
+}
+
+.rationalseo-import-modal-content .notice {
+	margin: 0;
+	padding: 12px 15px;
+}
+
+.rationalseo-import-modal-content .notice p {
+	margin: 0;
+	padding: 0;
 }
 
 /* Responsive */

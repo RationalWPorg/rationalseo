@@ -102,10 +102,10 @@ class RationalSEO_Import_Admin {
 							<span id="rationalseo-import-modal-loading-text"><?php esc_html_e( 'Loading...', 'rationalseo' ); ?></span>
 						</div>
 						<div id="rationalseo-import-modal-content" style="display: none;"></div>
-						<div id="rationalseo-import-modal-error" class="notice notice-error" style="display: none;">
+						<div id="rationalseo-import-modal-error" style="display: none;">
 							<p></p>
 						</div>
-						<div id="rationalseo-import-modal-success" class="notice notice-success" style="display: none;">
+						<div id="rationalseo-import-modal-result" style="display: none;">
 							<p></p>
 						</div>
 					</div>
@@ -227,8 +227,8 @@ class RationalSEO_Import_Admin {
 				$('#rationalseo-import-modal-loading').show();
 				$('#rationalseo-import-modal-loading-text').text('<?php echo esc_js( __( 'Loading preview...', 'rationalseo' ) ); ?>');
 				$('#rationalseo-import-modal-content').hide().empty();
-				$('#rationalseo-import-modal-error').hide();
-				$('#rationalseo-import-modal-success').hide();
+				$('#rationalseo-import-modal-error').removeClass('notice notice-error').hide();
+				$('#rationalseo-import-modal-result').removeClass('notice notice-success').hide();
 				$('#rationalseo-import-modal-confirm').hide().prop('disabled', false).text('<?php echo esc_js( __( 'Import Selected', 'rationalseo' ) ); ?>');
 				$('#rationalseo-import-modal-done').hide();
 				$('#rationalseo-import-modal-cancel').show();
@@ -343,13 +343,13 @@ class RationalSEO_Import_Admin {
 			}
 
 			function showModalError(message) {
-				$('#rationalseo-import-modal-error').show().find('p').text(message);
+				$('#rationalseo-import-modal-error').addClass('notice notice-error').show().find('p').text(message);
 				$('#rationalseo-import-modal-done').show();
 				$('#rationalseo-import-modal-cancel').hide();
 			}
 
 			function showModalSuccess(message) {
-				$('#rationalseo-import-modal-success').show().find('p').text(message);
+				$('#rationalseo-import-modal-result').addClass('notice notice-success').show().find('p').text(message);
 				$('#rationalseo-import-modal-done').show();
 				$('#rationalseo-import-modal-cancel').hide();
 				$('#rationalseo-import-modal-confirm').hide();

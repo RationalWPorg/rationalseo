@@ -149,3 +149,38 @@ add_action( 'rationalseo_register_importers', function( $manager ) {
 Located at: RationalWP > SEO > Import tab
 - Shows available importers as cards with item counts
 - Modal workflow: Preview → Select types → Import → Results
+
+### Yoast SEO Importer (Implemented)
+The Yoast importer (`class-yoast-importer.php`) handles:
+
+**Post Meta Import:**
+| Yoast Key | RationalSEO Key | Notes |
+|-----------|-----------------|-------|
+| `_yoast_wpseo_title` | `_rationalseo_title` | Direct copy |
+| `_yoast_wpseo_metadesc` | `_rationalseo_desc` | Direct copy |
+| `_yoast_wpseo_canonical` | `_rationalseo_canonical` | Direct copy |
+| `_yoast_wpseo_meta-robots-noindex` | `_rationalseo_noindex` | 1→'1', else skip |
+| `_yoast_wpseo_opengraph-image` | `_rationalseo_og_image` | Direct copy |
+
+**Redirects Import (Yoast Premium):**
+- Sources: `wpseo-premium-redirects-base`, `wpseo_redirect`, `wpseo-premium-redirects-export-plain`
+- Supports plain and regex redirects
+- Status codes: 301, 302, 307, 410 (skips 451)
+
+**Settings Import:**
+- Separator (converts `sc-*` codes to actual characters)
+- Home title and description (converts `%%variable%%` syntax to actual values)
+- Default social image
+
+**Yoast Variable Conversion:**
+Since RationalSEO doesn't support template variables, Yoast variables are converted during import:
+- `%%sitename%%`, `%%sitetitle%%` → Site name
+- `%%sitedesc%%`, `%%tagline%%` → Site tagline
+- `%%sep%%`, `%%separator%%` → Title separator
+- `%%currentyear%%`, `%%current_year%%` → Current year
+- `%%currentmonth%%`, `%%current_month%%` → Current month
+- Post-specific variables (%%title%%, %%excerpt%%, etc.) cause the value to be skipped
+
+**Batch Processing:** Post meta imports in batches of 100 to avoid timeouts.
+
+**Options:** `skip_existing` - Skip posts/redirects that already have RationalSEO data.
