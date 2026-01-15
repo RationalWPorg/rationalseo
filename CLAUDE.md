@@ -237,3 +237,49 @@ Rank Math uses `%variable%` (single percent) syntax. Supported conversions:
 **Batch Processing:** Post meta imports in batches of 100 to avoid timeouts.
 
 **Options:** `skip_existing` - Skip posts/redirects that already have RationalSEO data.
+
+### AIOSEO Importer (Implemented)
+The AIOSEO importer (`class-aioseo-importer.php`) handles:
+
+**Important:** AIOSEO stores post data in custom table `aioseo_posts`, NOT post meta.
+
+**Post Meta Import (from `aioseo_posts` table):**
+| AIOSEO Column | RationalSEO Key | Notes |
+|---------------|-----------------|-------|
+| `title` | `_rationalseo_title` | Direct copy |
+| `description` | `_rationalseo_desc` | Direct copy |
+| `canonical_url` | `_rationalseo_canonical` | Direct copy |
+| `robots_noindex` | `_rationalseo_noindex` | 1→'1' |
+| `og_image_custom_url` | `_rationalseo_og_image` | Direct copy |
+
+**Redirects Import:**
+- Source: `aioseo_redirects` database table (Pro/Premium feature only)
+- Columns: `source_url`, `target_url`, `type`, `regex`, `enabled`
+- Status codes: 301, 302, 307, 410
+
+**Settings Import (from `aioseo_options` JSON):**
+| AIOSEO Path | RationalSEO Key |
+|-------------|-----------------|
+| `searchAppearance.global.separator` | `separator` |
+| `searchAppearance.global.siteTitle` | `home_title` (with variable conversion) |
+| `searchAppearance.global.metaDescription` | `home_description` (with variable conversion) |
+| `social.facebook.general.defaultImagePosts` | `social_default_image` |
+| `social.twitter.general.defaultCardType` | `twitter_card_type` |
+| `searchAppearance.global.schema.organizationLogo` | `site_logo` |
+| `webmasterTools.google` | `verification_google` |
+| `webmasterTools.bing` | `verification_bing` |
+
+**AIOSEO Variable Conversion:**
+AIOSEO uses `#variable` (hash prefix) syntax. Supported conversions:
+- `#site_title` → Site name
+- `#tagline` → Site tagline
+- `#separator_sa` → Title separator
+- `#current_year`, `#current_month`, `#current_day`, `#current_date` → Date values
+- `#page_number` → Empty (for static content)
+- Post-specific variables (#post_title, #post_excerpt, etc.) cause the value to be skipped
+
+**Important:** AIOSEO options are stored as JSON in `aioseo_options`. Use `get_option_value()` helper with dot notation to access nested values.
+
+**Batch Processing:** Post imports in batches of 100 to avoid timeouts.
+
+**Options:** `skip_existing` - Skip posts/redirects that already have RationalSEO data.

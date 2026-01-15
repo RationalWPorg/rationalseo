@@ -43,6 +43,7 @@ require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/class-import-admin.php';
 // Load importers.
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-yoast-importer.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-rankmath-importer.php';
+require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-aioseo-importer.php';
 
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-rationalseo.php';
 
