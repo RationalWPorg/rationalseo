@@ -63,7 +63,8 @@ rationalseo/
 │   │   └── importers/
 │   │       ├── class-yoast-importer.php    # ✅ COMPLETE (8 settings)
 │   │       ├── class-rankmath-importer.php # ✅ COMPLETE (8 settings)
-│   │       └── class-aioseo-importer.php   # ✅ COMPLETE (8 settings)
+│   │       ├── class-aioseo-importer.php   # ✅ COMPLETE (8 settings)
+│   │       └── class-seopress-importer.php # ✅ COMPLETE (8 settings)
 │   ├── class-redirects.php             # Redirects manager
 │   └── class-settings.php              # Settings storage
 ├── assets/css/
@@ -136,15 +137,71 @@ Post-specific variables (`#post_title`, `#post_excerpt`, etc.) cause value to be
 
 ---
 
+## SEOPress Importer (Phase 5 Implementation)
+
+Created `class-seopress-importer.php` with full import functionality:
+
+### Post Meta Import (from `_seopress_*` post meta)
+| SEOPress Key | RationalSEO Key | Notes |
+|--------------|-----------------|-------|
+| `_seopress_titles_title` | `_rationalseo_title` | Direct copy |
+| `_seopress_titles_desc` | `_rationalseo_desc` | Direct copy |
+| `_seopress_robots_canonical` | `_rationalseo_canonical` | Direct copy |
+| `_seopress_robots_index` | `_rationalseo_noindex` | 'yes' → '1' |
+| `_seopress_social_fb_img` | `_rationalseo_og_image` | Direct copy |
+
+### Settings Import (from 3 separate options)
+
+**From `seopress_titles_option_name`:**
+| SEOPress Key | RationalSEO Key |
+|--------------|-----------------|
+| `seopress_titles_sep` | `separator` |
+| `seopress_titles_home_site_title` | `home_title` (with variable conversion) |
+| `seopress_titles_home_site_desc` | `home_description` (with variable conversion) |
+
+**From `seopress_social_option_name`:**
+| SEOPress Key | RationalSEO Key |
+|--------------|-----------------|
+| `seopress_social_facebook_img` | `social_default_image` |
+| `seopress_social_twitter_card_img_size` | `twitter_card_type` |
+| `seopress_social_knowledge_img` | `site_logo` |
+
+**From `seopress_advanced_option_name`:**
+| SEOPress Key | RationalSEO Key |
+|--------------|-----------------|
+| `seopress_advanced_advanced_google` | `verification_google` |
+| `seopress_advanced_advanced_bing` | `verification_bing` |
+
+### Redirects Import (from post meta - unique to SEOPress)
+SEOPress stores redirects as **post meta**, not in a separate table:
+| SEOPress Meta Key | RationalSEO Field |
+|-------------------|-------------------|
+| `_seopress_redirections_value` | `url_to` (target URL) |
+| `_seopress_redirections_type` | `status_code` (301, 302, 307) |
+| `_seopress_redirections_enabled` | Check if redirect is active |
+
+**Note**: Source URL is derived from the post's permalink. Regex redirects not supported in free version.
+
+### SEOPress Variable Conversion (`%%variable%%` syntax)
+SEOPress uses the same double-percent syntax as Yoast:
+| Variable | Replacement |
+|----------|-------------|
+| `%%sitetitle%%`, `%%sitename%%` | Site name |
+| `%%tagline%%`, `%%sitedesc%%` | Site tagline |
+| `%%sep%%` | Title separator |
+| `%%currentyear%%` | Current year |
+| `%%currentmonth%%` | Current month |
+| `%%currentday%%` | Current day |
+| `%%currentdate%%` | Formatted date |
+| `%%page%%`, `%%current_pagination%%` | Empty (static) |
+
+Post-specific variables (`%%title%%`, `%%excerpt%%`, etc.) cause value to be skipped.
+
+---
+
 ## Suggested Next Phase Options
 
-### Option A: SEOPress Importer
-Create `class-seopress-importer.php`:
-- Post meta mapping
-- Settings import
-- Similar structure to other importers
-
-### Option C: Import System Enhancements
+### Option A: Import System Enhancements
 - Add progress indicator for large imports (batch status)
 - Add rollback/undo capability
 - Add import history/log
@@ -163,21 +220,25 @@ Create `class-seopress-importer.php`:
    - Yoast: `wpseo`, `wpseo_titles`, `wpseo_social` (underscores, prefixed)
    - Rank Math: `rank-math-options-titles`, `rank-math-options-general` (hyphens!)
    - AIOSEO: `aioseo_options` (single JSON option)
+   - SEOPress: `seopress_titles_option_name`, `seopress_social_option_name`, `seopress_advanced_option_name` (3 separate options)
 
 2. **Variable Syntax**: Each plugin has different template variable syntax:
    - Yoast: `%%variable%%` (double percent)
    - Rank Math: `%variable%` (single percent)
    - AIOSEO: `#variable` (hash prefix)
+   - SEOPress: `%%variable%%` (double percent, same as Yoast)
 
 3. **Redirect Storage**: Different plugins store redirects differently:
    - Yoast: wp_options (`wpseo-premium-redirects-base`)
    - Rank Math: Custom table (`wp_rank_math_redirections`)
    - AIOSEO: Custom table (`aioseo_redirects`) - Pro feature only
+   - SEOPress: Post meta (`_seopress_redirections_*`) - unique approach
 
 4. **Post Data Storage**: Different plugins store post SEO data differently:
    - Yoast: Post meta (`_yoast_wpseo_*`)
    - Rank Math: Post meta (`rank_math_*`)
    - AIOSEO: Custom table (`aioseo_posts`) - NOT post meta
+   - SEOPress: Post meta (`_seopress_*`)
 
 5. **Modal Notice Classes**: Add `.notice` classes via JavaScript (not in HTML) to prevent WordPress moving notices to the page top
 
@@ -201,6 +262,7 @@ Create `class-seopress-importer.php`:
 - Yoast importer complete with 8 settings
 - Rank Math importer complete with 8 settings
 - AIOSEO importer complete with 8 settings
+- SEOPress importer complete with 8 settings
 - Modal UI working correctly
 - AJAX handlers operational
 - CSS styles in place
