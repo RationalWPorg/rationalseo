@@ -76,9 +76,11 @@ class RationalSEO_Redirects {
 			url_from VARCHAR(255) NOT NULL,
 			url_to TEXT NOT NULL,
 			status_code INT(3) NOT NULL DEFAULT 301,
+			is_regex TINYINT(1) NOT NULL DEFAULT 0,
 			count INT(11) NOT NULL DEFAULT 0,
 			PRIMARY KEY (id),
-			KEY url_from (url_from)
+			KEY url_from (url_from),
+			KEY is_regex (is_regex)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -122,15 +124,39 @@ class RationalSEO_Redirects {
 
 		$table_name = self::get_table_name();
 
-		// Direct query on indexed column.
+		// First pass: exact match on indexed column (fast).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$redirect = $wpdb->get_row(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT id, url_to, status_code FROM {$table_name} WHERE url_from = %s LIMIT 1",
+				"SELECT id, url_to, status_code FROM {$table_name} WHERE url_from = %s AND is_regex = 0 LIMIT 1",
 				$url_path
 			)
 		);
+
+		$destination = null;
+
+		if ( $redirect ) {
+			$destination = $redirect->url_to;
+		} else {
+			// Second pass: check regex redirects.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$regex_redirects = $wpdb->get_results(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT id, url_from, url_to, status_code FROM {$table_name} WHERE is_regex = 1"
+			);
+
+			if ( $regex_redirects ) {
+				foreach ( $regex_redirects as $regex_redirect ) {
+					$pattern = $this->prepare_regex_pattern( $regex_redirect->url_from );
+					if ( preg_match( $pattern, $url_path, $matches ) ) {
+						$redirect    = $regex_redirect;
+						$destination = $this->apply_regex_replacements( $regex_redirect->url_to, $matches );
+						break;
+					}
+				}
+			}
+		}
 
 		if ( ! $redirect ) {
 			return;
@@ -161,8 +187,39 @@ class RationalSEO_Redirects {
 			$status_code = 301;
 		}
 
-		wp_safe_redirect( $redirect->url_to, $status_code, 'RationalSEO' );
+		wp_safe_redirect( $destination, $status_code, 'RationalSEO' );
 		exit;
+	}
+
+	/**
+	 * Prepare a regex pattern for preg_match.
+	 *
+	 * @param string $pattern The pattern from the database.
+	 * @return string The prepared regex pattern with delimiters.
+	 */
+	private function prepare_regex_pattern( $pattern ) {
+		// Escape delimiters if present in the pattern.
+		$pattern = str_replace( '~', '\~', $pattern );
+		// Add delimiters and anchors for full path matching.
+		return '~^' . $pattern . '$~';
+	}
+
+	/**
+	 * Apply regex capture group replacements to the destination URL.
+	 *
+	 * @param string $destination The destination URL with potential $1, $2, etc placeholders.
+	 * @param array  $matches     The preg_match matches array.
+	 * @return string The destination URL with replacements applied.
+	 */
+	private function apply_regex_replacements( $destination, $matches ) {
+		// Replace $1, $2, etc. with captured groups.
+		foreach ( $matches as $index => $match ) {
+			if ( 0 === $index ) {
+				continue; // Skip full match.
+			}
+			$destination = str_replace( '$' . $index, $match, $destination );
+		}
+		return $destination;
 	}
 
 	/**
@@ -220,18 +277,21 @@ class RationalSEO_Redirects {
 	/**
 	 * Add a new redirect.
 	 *
-	 * @param string $url_from    Source URL path.
+	 * @param string $url_from    Source URL path or regex pattern.
 	 * @param string $url_to      Destination URL.
 	 * @param int    $status_code HTTP status code.
+	 * @param bool   $is_regex    Whether this is a regex redirect.
 	 * @return int|false Insert ID on success, false on failure.
 	 */
-	public function add_redirect( $url_from, $url_to, $status_code = 301 ) {
+	public function add_redirect( $url_from, $url_to, $status_code = 301, $is_regex = false ) {
 		global $wpdb;
 
-		// Normalize url_from.
-		$url_from = '/' . ltrim( $url_from, '/' );
-		if ( strlen( $url_from ) > 1 ) {
-			$url_from = rtrim( $url_from, '/' );
+		// Normalize url_from (only for non-regex redirects).
+		if ( ! $is_regex ) {
+			$url_from = '/' . ltrim( $url_from, '/' );
+			if ( strlen( $url_from ) > 1 ) {
+				$url_from = rtrim( $url_from, '/' );
+			}
 		}
 
 		// Validate status code.
@@ -249,9 +309,10 @@ class RationalSEO_Redirects {
 				'url_from'    => $url_from,
 				'url_to'      => $url_to,
 				'status_code' => $status_code,
+				'is_regex'    => $is_regex ? 1 : 0,
 				'count'       => 0,
 			),
-			array( '%s', '%s', '%d', '%d' )
+			array( '%s', '%s', '%d', '%d', '%d' )
 		);
 
 		if ( false === $result ) {
@@ -333,6 +394,7 @@ class RationalSEO_Redirects {
 		$url_from    = isset( $_POST['url_from'] ) ? sanitize_text_field( wp_unslash( $_POST['url_from'] ) ) : '';
 		$url_to      = isset( $_POST['url_to'] ) ? esc_url_raw( wp_unslash( $_POST['url_to'] ) ) : '';
 		$status_code = isset( $_POST['status_code'] ) ? absint( $_POST['status_code'] ) : 301;
+		$is_regex    = isset( $_POST['is_regex'] ) && '1' === $_POST['is_regex'];
 
 		if ( empty( $url_from ) ) {
 			wp_send_json_error( array( 'message' => __( 'Source URL is required.', 'rationalseo' ) ) );
@@ -343,17 +405,30 @@ class RationalSEO_Redirects {
 			wp_send_json_error( array( 'message' => __( 'Destination URL is required.', 'rationalseo' ) ) );
 		}
 
-		// Check if redirect already exists.
-		$normalized_from = '/' . ltrim( $url_from, '/' );
-		if ( strlen( $normalized_from ) > 1 ) {
-			$normalized_from = rtrim( $normalized_from, '/' );
+		// Validate regex pattern if is_regex is true.
+		if ( $is_regex ) {
+			$test_pattern = '~^' . str_replace( '~', '\~', $url_from ) . '$~';
+			// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			if ( @preg_match( $test_pattern, '' ) === false ) {
+				wp_send_json_error( array( 'message' => __( 'Invalid regex pattern.', 'rationalseo' ) ) );
+			}
 		}
 
-		if ( $this->get_redirect_by_from( $normalized_from ) ) {
+		// Normalize url_from for non-regex redirects.
+		$normalized_from = $url_from;
+		if ( ! $is_regex ) {
+			$normalized_from = '/' . ltrim( $url_from, '/' );
+			if ( strlen( $normalized_from ) > 1 ) {
+				$normalized_from = rtrim( $normalized_from, '/' );
+			}
+		}
+
+		// Check if redirect already exists (only for non-regex).
+		if ( ! $is_regex && $this->get_redirect_by_from( $normalized_from ) ) {
 			wp_send_json_error( array( 'message' => __( 'A redirect for this URL already exists.', 'rationalseo' ) ) );
 		}
 
-		$id = $this->add_redirect( $url_from, $url_to, $status_code );
+		$id = $this->add_redirect( $url_from, $url_to, $status_code, $is_regex );
 
 		if ( false === $id ) {
 			wp_send_json_error( array( 'message' => __( 'Failed to add redirect.', 'rationalseo' ) ) );
@@ -367,6 +442,7 @@ class RationalSEO_Redirects {
 					'url_from'    => $normalized_from,
 					'url_to'      => $url_to,
 					'status_code' => $status_code,
+					'is_regex'    => $is_regex ? 1 : 0,
 					'count'       => 0,
 				),
 			)

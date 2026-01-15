@@ -750,6 +750,7 @@ class RationalSEO_Admin {
 						<th class="column-from"><?php esc_html_e( 'From URL', 'rationalseo' ); ?></th>
 						<th class="column-to"><?php esc_html_e( 'To URL', 'rationalseo' ); ?></th>
 						<th class="column-status"><?php esc_html_e( 'Type', 'rationalseo' ); ?></th>
+						<th class="column-regex"><?php esc_html_e( 'Regex', 'rationalseo' ); ?></th>
 						<th class="column-hits"><?php esc_html_e( 'Hits', 'rationalseo' ); ?></th>
 						<th class="column-actions"><?php esc_html_e( 'Actions', 'rationalseo' ); ?></th>
 					</tr>
@@ -770,7 +771,10 @@ class RationalSEO_Admin {
 								<option value="410"><?php esc_html_e( '410 Gone', 'rationalseo' ); ?></option>
 							</select>
 						</td>
-						<td>&mdash;</td>
+						<td class="column-regex">
+							<input type="checkbox" id="rationalseo-new-regex" value="1">
+						</td>
+						<td class="column-hits">&mdash;</td>
 						<td>
 							<button type="button" class="button button-primary" id="rationalseo-add-redirect">
 								<?php esc_html_e( 'Add', 'rationalseo' ); ?>
@@ -779,10 +783,11 @@ class RationalSEO_Admin {
 					</tr>
 					<?php if ( empty( $redirects ) ) : ?>
 						<tr class="no-redirects">
-							<td colspan="5"><?php esc_html_e( 'No redirects found. Add one above.', 'rationalseo' ); ?></td>
+							<td colspan="6"><?php esc_html_e( 'No redirects found. Add one above.', 'rationalseo' ); ?></td>
 						</tr>
 					<?php else : ?>
 						<?php foreach ( $redirects as $redirect ) : ?>
+							<?php $is_regex = isset( $redirect->is_regex ) && (int) $redirect->is_regex === 1; ?>
 							<tr data-id="<?php echo esc_attr( $redirect->id ); ?>">
 								<td class="column-from"><code><?php echo esc_html( $redirect->url_from ); ?></code></td>
 								<td class="column-to">
@@ -795,6 +800,13 @@ class RationalSEO_Admin {
 									<?php endif; ?>
 								</td>
 								<td class="column-status"><?php echo esc_html( $redirect->status_code ); ?></td>
+								<td class="column-regex">
+									<?php if ( $is_regex ) : ?>
+										<span class="rationalseo-regex-badge"><?php esc_html_e( 'Yes', 'rationalseo' ); ?></span>
+									<?php else : ?>
+										&mdash;
+									<?php endif; ?>
+								</td>
 								<td class="column-hits"><?php echo esc_html( number_format_i18n( $redirect->count ) ); ?></td>
 								<td class="column-actions">
 									<button type="button" class="button button-link-delete rationalseo-delete-redirect" data-id="<?php echo esc_attr( $redirect->id ); ?>">
@@ -821,6 +833,7 @@ class RationalSEO_Admin {
 				var urlFrom = $('#rationalseo-new-from').val().trim();
 				var urlTo = $('#rationalseo-new-to').val().trim();
 				var statusCode = $('#rationalseo-new-status').val();
+				var isRegex = $('#rationalseo-new-regex').is(':checked') ? '1' : '0';
 
 				if (!urlFrom) {
 					showMessage('<?php echo esc_js( __( 'Please enter a source URL.', 'rationalseo' ) ); ?>', 'error');
@@ -839,7 +852,8 @@ class RationalSEO_Admin {
 					nonce: nonce,
 					url_from: urlFrom,
 					url_to: urlTo,
-					status_code: statusCode
+					status_code: statusCode,
+					is_regex: isRegex
 				}, function(response) {
 					$btn.prop('disabled', false);
 
@@ -848,11 +862,15 @@ class RationalSEO_Admin {
 						var toDisplay = statusCode === '410'
 							? '<em><?php echo esc_js( __( '(Gone)', 'rationalseo' ) ); ?></em>'
 							: '<a href="' + redirect.url_to + '" target="_blank" rel="noopener">' + redirect.url_to + '</a>';
+						var regexDisplay = redirect.is_regex == 1
+							? '<span class="rationalseo-regex-badge"><?php echo esc_js( __( 'Yes', 'rationalseo' ) ); ?></span>'
+							: '&mdash;';
 
 						var newRow = '<tr data-id="' + redirect.id + '">' +
 							'<td class="column-from"><code>' + redirect.url_from + '</code></td>' +
 							'<td class="column-to">' + toDisplay + '</td>' +
 							'<td class="column-status">' + redirect.status_code + '</td>' +
+							'<td class="column-regex">' + regexDisplay + '</td>' +
 							'<td class="column-hits">0</td>' +
 							'<td class="column-actions">' +
 								'<button type="button" class="button button-link-delete rationalseo-delete-redirect" data-id="' + redirect.id + '">' +
@@ -868,6 +886,7 @@ class RationalSEO_Admin {
 						$('#rationalseo-new-from').val('');
 						$('#rationalseo-new-to').val('');
 						$('#rationalseo-new-status').val('301');
+						$('#rationalseo-new-regex').prop('checked', false);
 
 						showMessage(response.data.message, 'success');
 					} else {
@@ -900,7 +919,7 @@ class RationalSEO_Admin {
 							$(this).remove();
 							if ($('#rationalseo-redirects-list tr').length === 1) {
 								$('.rationalseo-add-row').after(
-									'<tr class="no-redirects"><td colspan="5"><?php echo esc_js( __( 'No redirects found. Add one above.', 'rationalseo' ) ); ?></td></tr>'
+									'<tr class="no-redirects"><td colspan="6"><?php echo esc_js( __( 'No redirects found. Add one above.', 'rationalseo' ) ); ?></td></tr>'
 								);
 							}
 						});

@@ -59,9 +59,10 @@ Rational SEO rigorously rejects features that do not directly influence search e
 **URL Redirects**
 
 * 301, 302, 307 redirects and 410 (Gone) responses
+* Regex redirect support with capture group substitution ($1, $2, etc.)
 * Auto-redirect when post slugs change
 * Hit counter tracking
-* Fast execution via indexed database lookups
+* Fast execution via indexed database lookups (exact match first, then regex)
 
 **Editor Integration**
 
@@ -108,6 +109,12 @@ Navigate to Settings > Rational SEO in your WordPress admin. Settings are organi
 
 == Changelog ==
 
+= 1.1.0 =
+* Added regex redirect support with capture group substitution
+* Two-pass redirect matching: exact match (fast) then regex patterns
+* Admin UI checkbox for marking redirects as regex
+* Regex pattern validation on save
+
 = 1.0.0 =
 * Initial release
 * Meta tags output (title, description, robots, canonical)
@@ -118,6 +125,9 @@ Navigate to Settings > Rational SEO in your WordPress admin. Settings are organi
 * Post editor meta box integration
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Adds regex redirect support for advanced URL matching patterns.
 
 = 1.0.0 =
 Initial release of Rational SEO.

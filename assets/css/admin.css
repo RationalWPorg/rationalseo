@@ -50,23 +50,28 @@
 }
 
 .rationalseo-redirects-table .column-from {
-	width: 25%;
+	width: 20%;
 }
 
 .rationalseo-redirects-table .column-to {
-	width: 35%;
+	width: 28%;
 }
 
 .rationalseo-redirects-table .column-status {
-	width: 12%;
+	width: 18%;
+}
+
+.rationalseo-redirects-table .column-regex {
+	width: 8%;
+	text-align: center;
 }
 
 .rationalseo-redirects-table .column-hits {
-	width: 10%;
+	width: 8%;
 }
 
 .rationalseo-redirects-table .column-actions {
-	width: 18%;
+	width: 10%;
 }
 
 .rationalseo-redirects-table .column-from code {
@@ -79,10 +84,24 @@
 	background: #f6f7f7;
 }
 
-.rationalseo-redirects-table .rationalseo-add-row input,
-.rationalseo-redirects-table .rationalseo-add-row select {
+.rationalseo-redirects-table .rationalseo-add-row input[type="text"],
+.rationalseo-redirects-table .rationalseo-add-row input[type="url"] {
 	width: 100%;
 	max-width: none;
+}
+
+.rationalseo-redirects-table .rationalseo-add-row select {
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.rationalseo-redirects-table .rationalseo-add-row input[type="checkbox"] {
+	margin: 0;
+}
+
+.rationalseo-redirects-table .rationalseo-add-row .column-regex {
+	text-align: center;
 }
 
 .rationalseo-redirects-table .no-redirects td {
@@ -102,4 +121,15 @@
 
 #rationalseo-redirect-message {
 	margin-top: 15px;
+}
+
+.rationalseo-regex-badge {
+	display: inline-block;
+	background: #2271b1;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: 3px;
+	text-transform: uppercase;
 }

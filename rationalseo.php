@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Rational SEO
+ * Plugin Name: RationalSEO
  * Plugin URI: https://rationalwp.com/plugins/rationalseo
  * Description: Technical SEO essentials with zero bloat. No dashboards, analytics, content scoring, or frontend assets.
  * Version: 1.0.0
