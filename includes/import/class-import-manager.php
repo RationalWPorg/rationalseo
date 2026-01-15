@@ -77,6 +77,9 @@ class RationalSEO_Import_Manager {
 
 		// Register Rank Math importer.
 		$manager->register( new RationalSEO_RankMath_Importer( $this->settings ) );
+
+		// Register AIOSEO importer.
+		$manager->register( new RationalSEO_AIOSEO_Importer( $this->settings ) );
 	}
 
 	/**
