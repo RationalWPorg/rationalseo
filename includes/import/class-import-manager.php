@@ -74,6 +74,9 @@ class RationalSEO_Import_Manager {
 	public function register_core_importers( $manager ) {
 		// Register Yoast SEO importer.
 		$manager->register( new RationalSEO_Yoast_Importer( $this->settings ) );
+
+		// Register Rank Math importer.
+		$manager->register( new RationalSEO_RankMath_Importer( $this->settings ) );
 	}
 
 	/**
