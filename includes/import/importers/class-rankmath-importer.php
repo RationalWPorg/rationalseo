@@ -812,9 +812,7 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are dynamically generated from array count.
 				$wpdb->prepare(
 					"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ($placeholders) AND meta_value != '' LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					...$meta_keys,
-					self::BATCH_SIZE,
-					$offset
+					...array_merge( $meta_keys, array( self::BATCH_SIZE, $offset ) )
 				)
 			);
 
