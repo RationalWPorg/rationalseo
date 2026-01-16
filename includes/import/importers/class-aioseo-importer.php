@@ -323,7 +323,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		// Count posts with any SEO data (title, description, canonical, or robots_noindex).
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$count = $wpdb->get_var(
 			"SELECT COUNT(*) FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '')" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
@@ -357,7 +357,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		// Count enabled redirects.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$count = $wpdb->get_var(
 			"SELECT COUNT(*) FROM {$table_name} WHERE enabled = 1" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
@@ -510,7 +510,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		// Get enabled redirects.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$redirects_raw = $wpdb->get_results(
 			"SELECT source_url, target_url, type, regex FROM {$table_name} WHERE enabled = 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			ARRAY_A
@@ -591,7 +591,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		// Get sample posts with AIOSEO data (limit to 5 for preview).
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$rows = $wpdb->get_results(
 			"SELECT post_id, title, description, canonical_url, robots_noindex, og_image_custom_url FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '') LIMIT 5", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			ARRAY_A
@@ -813,7 +813,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 
 		while ( $has_more ) {
 			// Get batch of posts with AIOSEO data.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT post_id, title, description, canonical_url, robots_noindex, og_image_custom_url FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '') LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

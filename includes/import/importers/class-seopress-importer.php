@@ -332,9 +332,10 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$count = $wpdb->get_var(
+			// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are dynamically generated from array count.
 			$wpdb->prepare(
 				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ($placeholders) AND meta_value != ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$meta_keys
+				...$meta_keys
 			)
 		);
 
@@ -487,9 +488,10 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 		// Get sample posts with SEOPress meta (limit to 5 for preview).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$post_ids = $wpdb->get_col(
+			// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are dynamically generated from array count.
 			$wpdb->prepare(
 				"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ($placeholders) AND meta_value != '' LIMIT 5", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$meta_keys
+				...$meta_keys
 			)
 		);
 
@@ -680,9 +682,12 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 			// Get batch of post IDs with SEOPress meta.
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$post_ids = $wpdb->get_col(
+				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are dynamically generated from array count.
 				$wpdb->prepare(
 					"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ($placeholders) AND meta_value != '' LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					array_merge( $meta_keys, array( self::BATCH_SIZE, $offset ) )
+					...$meta_keys,
+					self::BATCH_SIZE,
+					$offset
 				)
 			);
 
