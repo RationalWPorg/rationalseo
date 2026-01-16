@@ -161,6 +161,186 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 	}
 
 	/**
+	 * Get the Rank Math separator setting.
+	 *
+	 * @return string The separator character.
+	 */
+	private function get_rankmath_separator() {
+		$rm_titles = get_option( 'rank-math-options-titles', array() );
+		$separator = '-'; // Rank Math default.
+
+		if ( ! empty( $rm_titles['title_separator'] ) ) {
+			$separator = $rm_titles['title_separator'];
+		}
+
+		return $separator;
+	}
+
+	/**
+	 * Convert Rank Math template variables for post meta, including post-specific variables.
+	 *
+	 * Unlike convert_rankmath_variables() which is for site-wide settings,
+	 * this method can convert post-specific variables using the provided post object.
+	 *
+	 * @param string   $text      Text containing Rank Math variables.
+	 * @param string   $separator The separator to use for %sep%.
+	 * @param \WP_Post $post      The post object for post-specific variables.
+	 * @return string Text with variables replaced.
+	 */
+	private function convert_rankmath_variables_for_post( $text, $separator, $post ) {
+		if ( empty( $text ) || strpos( $text, '%' ) === false ) {
+			return $text;
+		}
+
+		$site_name    = get_bloginfo( 'name' );
+		$site_tagline = get_bloginfo( 'description' );
+		$site_url     = get_bloginfo( 'url' );
+		$current_year = gmdate( 'Y' );
+		$current_month = gmdate( 'F' );
+		$current_day  = gmdate( 'j' );
+		$current_date = gmdate( get_option( 'date_format' ) );
+
+		// Get organization info from Rank Math Local SEO settings.
+		$rm_titles = get_option( 'rank-math-options-titles', array() );
+		$org_name  = ! empty( $rm_titles['knowledgegraph_name'] ) ? $rm_titles['knowledgegraph_name'] : $site_name;
+		$org_url   = ! empty( $rm_titles['url'] ) ? $rm_titles['url'] : $site_url;
+		$org_logo  = ! empty( $rm_titles['knowledgegraph_logo'] ) ? $rm_titles['knowledgegraph_logo'] : '';
+
+		// Get primary category if available.
+		$primary_category = '';
+		$categories       = get_the_category( $post->ID );
+		if ( ! empty( $categories ) ) {
+			$primary_category = $categories[0]->name;
+		}
+
+		// Get post excerpt or generate from content.
+		$excerpt = $post->post_excerpt;
+		if ( empty( $excerpt ) ) {
+			$excerpt = wp_trim_words( wp_strip_all_tags( $post->post_content ), 55, '...' );
+		}
+
+		// Get focus keyword if set.
+		$focus_keyword = get_post_meta( $post->ID, 'rank_math_focus_keyword', true );
+		if ( ! empty( $focus_keyword ) ) {
+			// Rank Math stores multiple keywords comma-separated, get the first one.
+			$focus_keyword = explode( ',', $focus_keyword )[0];
+			$focus_keyword = trim( $focus_keyword );
+		}
+
+		// Build replacements array with all known variations.
+		$replacements = array(
+			// Site info.
+			'%sitename%'      => $site_name,
+			'%site_title%'    => $site_name,
+			'%sitedesc%'      => $site_tagline,
+
+			// Separator.
+			'%sep%'           => $separator,
+			'%separator%'     => $separator,
+
+			// Pagination (empty for single posts).
+			'%page%'          => '',
+			'%pagenumber%'    => '',
+			'%pagetotal%'     => '',
+
+			// Date/time - both formats (with and without underscore).
+			'%currentyear%'   => $current_year,
+			'%current_year%'  => $current_year,
+			'%currentmonth%'  => $current_month,
+			'%current_month%' => $current_month,
+			'%currentday%'    => $current_day,
+			'%current_day%'   => $current_day,
+			'%currentdate%'   => $current_date,
+			'%current_date%'  => $current_date,
+			'%currenttime%'   => gmdate( get_option( 'time_format' ) ),
+			'%current_time%'  => gmdate( get_option( 'time_format' ) ),
+
+			// Organization info (Local SEO).
+			'%org_name%'      => $org_name,
+			'%org_url%'       => $org_url,
+			'%org_logo%'      => $org_logo,
+
+			// Post-specific variables.
+			'%title%'              => $post->post_title,
+			'%post_title%'         => $post->post_title,
+			'%seo_title%'          => $post->post_title,
+			'%excerpt%'            => $excerpt,
+			'%excerpt_only%'       => $post->post_excerpt,
+			'%seo_description%'    => $excerpt,
+			'%category%'           => $primary_category,
+			'%categories%'         => $primary_category,
+			'%primary_category%'   => $primary_category,
+			'%focuskw%'            => $focus_keyword,
+			'%focus_keyword%'      => $focus_keyword,
+			'%keywords%'           => $focus_keyword,
+			'%pt_single%'          => get_post_type_object( $post->post_type )->labels->singular_name ?? '',
+			'%pt_plural%'          => get_post_type_object( $post->post_type )->labels->name ?? '',
+			'%post_type%'          => get_post_type_object( $post->post_type )->labels->singular_name ?? '',
+			'%id%'                 => $post->ID,
+			'%post_id%'            => $post->ID,
+			'%postid%'             => $post->ID,
+			'%date%'               => get_the_date( '', $post ),
+			'%post_date%'          => get_the_date( '', $post ),
+			'%modified%'           => get_the_modified_date( '', $post ),
+			'%post_modified%'      => get_the_modified_date( '', $post ),
+			'%author%'             => get_the_author_meta( 'display_name', $post->post_author ),
+			'%name%'               => get_the_author_meta( 'display_name', $post->post_author ),
+			'%post_author%'        => get_the_author_meta( 'display_name', $post->post_author ),
+			'%userid%'             => $post->post_author,
+			'%post_year%'          => get_the_date( 'Y', $post ),
+			'%post_month%'         => get_the_date( 'F', $post ),
+			'%post_day%'           => get_the_date( 'j', $post ),
+			'%filename%'           => '',
+			'%url%'                => get_permalink( $post ),
+			'%post_url%'           => get_permalink( $post ),
+		);
+
+		// Apply replacements (case-insensitive).
+		foreach ( $replacements as $var => $value ) {
+			$text = str_ireplace( $var, $value, $text );
+		}
+
+		// Handle %currenttime(format)% with custom date format.
+		$text = preg_replace_callback(
+			'/%currenttime\(([^)]+)\)%/i',
+			function ( $matches ) {
+				return gmdate( $matches[1] );
+			},
+			$text
+		);
+
+		// Handle %count(type)% - replace with empty string.
+		$text = preg_replace( '/%count\([^)]+\)%/i', '', $text );
+
+		// Handle %customfield(name)% - try to get custom field value.
+		$text = preg_replace_callback(
+			'/%customfield\(([^)]+)\)%/i',
+			function ( $matches ) use ( $post ) {
+				$field_value = get_post_meta( $post->ID, $matches[1], true );
+				return is_string( $field_value ) ? $field_value : '';
+			},
+			$text
+		);
+
+		// Clean up any double spaces from empty replacements.
+		$text = preg_replace( '/\s+/', ' ', $text );
+		$text = trim( $text );
+
+		// Remove trailing/leading separators that might be left over.
+		$text = trim( $text, ' ' . $separator );
+
+		// If there are still unrecognized variables, remove them to avoid broken output.
+		$text = preg_replace( '/%[a-z_0-9]+%/i', '', $text );
+
+		// Clean up again after removing variables.
+		$text = preg_replace( '/\s+/', ' ', $text );
+		$text = trim( $text, ' ' . $separator );
+		$text = trim( $text );
+
+		return $text;
+	}
+
+	/**
 	 * Get the unique slug for this importer.
 	 *
 	 * @return string
@@ -610,6 +790,9 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 		);
 		$placeholders = implode( ',', array_fill( 0, count( $meta_keys ), '%s' ) );
 
+		// Get separator for variable conversion.
+		$separator = $this->get_rankmath_separator();
+
 		// Get sample posts with Rank Math meta (limit to 5 for preview).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$post_ids = $wpdb->get_col(
@@ -638,7 +821,14 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 			foreach ( $this->meta_mapping as $rm_key => $rational_key ) {
 				$value = get_post_meta( $post_id, $rm_key, true );
 				if ( ! empty( $value ) ) {
-					$meta_preview['meta'][ $rational_key ] = $value;
+					// Convert Rank Math variables for title and description fields.
+					if ( in_array( $rm_key, array( 'rank_math_title', 'rank_math_description' ), true ) ) {
+						$value = $this->convert_rankmath_variables_for_post( $value, $separator, $post );
+					}
+
+					if ( ! empty( $value ) ) {
+						$meta_preview['meta'][ $rational_key ] = $value;
+					}
 				}
 			}
 
@@ -802,6 +992,9 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 		);
 		$placeholders = implode( ',', array_fill( 0, count( $meta_keys ), '%s' ) );
 
+		// Get separator for variable conversion.
+		$separator = $this->get_rankmath_separator();
+
 		$offset = 0;
 		$has_more = true;
 
@@ -830,10 +1023,27 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 					continue;
 				}
 
+				// Get the post object for variable conversion.
+				$post = get_post( $post_id );
+				if ( ! $post ) {
+					$result['failed']++;
+					continue;
+				}
+
 				// Standard meta mapping.
 				foreach ( $this->meta_mapping as $rm_key => $rational_key ) {
 					$value = get_post_meta( $post_id, $rm_key, true );
 
+					if ( empty( $value ) ) {
+						continue;
+					}
+
+					// Convert Rank Math variables for title and description fields.
+					if ( in_array( $rm_key, array( 'rank_math_title', 'rank_math_description' ), true ) ) {
+						$value = $this->convert_rankmath_variables_for_post( $value, $separator, $post );
+					}
+
+					// Skip if conversion resulted in empty value.
 					if ( empty( $value ) ) {
 						continue;
 					}

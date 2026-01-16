@@ -116,6 +116,157 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 	}
 
 	/**
+	 * Get the AIOSEO separator setting.
+	 *
+	 * @return string The separator character.
+	 */
+	private function get_aioseo_separator() {
+		$options   = $this->get_aioseo_options();
+		$separator = '-'; // AIOSEO default.
+
+		if ( $options ) {
+			$sep = $this->get_option_value( $options, 'searchAppearance.global.separator', '' );
+			if ( ! empty( $sep ) ) {
+				$separator = html_entity_decode( $sep, ENT_QUOTES, 'UTF-8' );
+			}
+		}
+
+		return $separator;
+	}
+
+	/**
+	 * Convert AIOSEO template variables for post meta, including post-specific variables.
+	 *
+	 * Unlike convert_aioseo_variables() which is for site-wide settings,
+	 * this method can convert post-specific variables using the provided post object.
+	 *
+	 * @param string   $text      Text containing AIOSEO variables.
+	 * @param string   $separator The separator to use for #separator_sa.
+	 * @param \WP_Post $post      The post object for post-specific variables.
+	 * @return string Text with variables replaced.
+	 */
+	private function convert_aioseo_variables_for_post( $text, $separator, $post ) {
+		if ( empty( $text ) || strpos( $text, '#' ) === false ) {
+			return $text;
+		}
+
+		$site_name     = get_bloginfo( 'name' );
+		$site_tagline  = get_bloginfo( 'description' );
+		$current_year  = gmdate( 'Y' );
+		$current_month = gmdate( 'F' );
+		$current_day   = gmdate( 'j' );
+		$current_date  = gmdate( get_option( 'date_format' ) );
+
+		// Get primary category if available.
+		$primary_category = '';
+		$categories       = get_the_category( $post->ID );
+		if ( ! empty( $categories ) ) {
+			$primary_category = $categories[0]->name;
+		}
+
+		// Get post excerpt or generate from content.
+		$excerpt = $post->post_excerpt;
+		if ( empty( $excerpt ) ) {
+			$excerpt = wp_trim_words( wp_strip_all_tags( $post->post_content ), 55, '...' );
+		}
+
+		// Get focus keyphrase if set (AIOSEO stores this in the aioseo_posts table).
+		$focus_keyphrase = '';
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'aioseo_posts';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$keyphrase_row = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT keyphrases FROM {$table_name} WHERE post_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$post->ID
+			)
+		);
+		if ( ! empty( $keyphrase_row ) ) {
+			$keyphrases = json_decode( $keyphrase_row, true );
+			if ( ! empty( $keyphrases['focus']['keyphrase'] ) ) {
+				$focus_keyphrase = $keyphrases['focus']['keyphrase'];
+			}
+		}
+
+		// Build replacements array.
+		$replacements = array(
+			// Site info.
+			'#site_title'      => $site_name,
+			'#tagline'         => $site_tagline,
+
+			// Separator.
+			'#separator_sa'    => $separator,
+			'#separator'       => $separator,
+
+			// Pagination (empty for single posts).
+			'#page_number'     => '',
+
+			// Date/time.
+			'#current_year'    => $current_year,
+			'#current_month'   => $current_month,
+			'#current_day'     => $current_day,
+			'#current_date'    => $current_date,
+
+			// Post-specific variables.
+			'#post_title'           => $post->post_title,
+			'#post_excerpt'         => $excerpt,
+			'#post_excerpt_only'    => $post->post_excerpt,
+			'#post_content'         => wp_trim_words( wp_strip_all_tags( $post->post_content ), 55, '...' ),
+			'#post_date'            => get_the_date( '', $post ),
+			'#post_day'             => get_the_date( 'j', $post ),
+			'#post_month'           => get_the_date( 'F', $post ),
+			'#post_year'            => get_the_date( 'Y', $post ),
+			'#post_link'            => get_permalink( $post ),
+			'#post_link_alt'        => get_permalink( $post ),
+			'#author_first_name'    => get_the_author_meta( 'first_name', $post->post_author ),
+			'#author_last_name'     => get_the_author_meta( 'last_name', $post->post_author ),
+			'#author_name'          => get_the_author_meta( 'display_name', $post->post_author ),
+			'#author_bio'           => get_the_author_meta( 'description', $post->post_author ),
+			'#author_url'           => get_author_posts_url( $post->post_author ),
+			'#categories'           => $primary_category,
+			'#category'             => $primary_category,
+			'#category_title'       => $primary_category,
+			'#focus_keyphrase'      => $focus_keyphrase,
+			'#post_id'              => $post->ID,
+			'#permalink'            => get_permalink( $post ),
+			'#custom_field'         => '', // Can't handle without knowing field name.
+			'#taxonomy_title'       => '', // Can't determine taxonomy.
+		);
+
+		// Apply replacements (case-insensitive).
+		foreach ( $replacements as $var => $value ) {
+			$text = str_ireplace( $var, $value, $text );
+		}
+
+		// Handle #custom_field-FIELDNAME pattern.
+		$text = preg_replace_callback(
+			'/#custom_field-([a-zA-Z0-9_-]+)/i',
+			function ( $matches ) use ( $post ) {
+				$field_value = get_post_meta( $post->ID, $matches[1], true );
+				return is_string( $field_value ) ? $field_value : '';
+			},
+			$text
+		);
+
+		// Clean up any double spaces from empty replacements.
+		$text = preg_replace( '/\s+/', ' ', $text );
+		$text = trim( $text );
+
+		// Remove trailing/leading separators that might be left over.
+		$text = trim( $text, ' ' . $separator );
+
+		// If there are still unrecognized variables, remove them to avoid broken output.
+		$text = preg_replace( '/#[a-z_0-9-]+/i', '', $text );
+
+		// Clean up again after removing variables.
+		$text = preg_replace( '/\s+/', ' ', $text );
+		$text = trim( $text, ' ' . $separator );
+		$text = trim( $text );
+
+		return $text;
+	}
+
+	/**
 	 * Get the unique slug for this importer.
 	 *
 	 * @return string
@@ -590,6 +741,9 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 			);
 		}
 
+		// Get separator for variable conversion.
+		$separator = $this->get_aioseo_separator();
+
 		// Get sample posts with AIOSEO data (limit to 5 for preview).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$rows = $wpdb->get_results(
@@ -615,10 +769,16 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 
 			// Map AIOSEO columns to RationalSEO meta keys.
 			if ( ! empty( $row['title'] ) ) {
-				$meta_preview['meta']['_rationalseo_title'] = $row['title'];
+				$title = $this->convert_aioseo_variables_for_post( $row['title'], $separator, $post );
+				if ( ! empty( $title ) ) {
+					$meta_preview['meta']['_rationalseo_title'] = $title;
+				}
 			}
 			if ( ! empty( $row['description'] ) ) {
-				$meta_preview['meta']['_rationalseo_desc'] = $row['description'];
+				$desc = $this->convert_aioseo_variables_for_post( $row['description'], $separator, $post );
+				if ( ! empty( $desc ) ) {
+					$meta_preview['meta']['_rationalseo_desc'] = $desc;
+				}
 			}
 			if ( ! empty( $row['canonical_url'] ) ) {
 				$meta_preview['meta']['_rationalseo_canonical'] = $row['canonical_url'];
@@ -808,6 +968,9 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 			return $result;
 		}
 
+		// Get separator for variable conversion.
+		$separator = $this->get_aioseo_separator();
+
 		$offset   = 0;
 		$has_more = true;
 
@@ -838,21 +1001,34 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 					continue;
 				}
 
+				// Get the post object for variable conversion.
+				$post = get_post( $post_id );
+				if ( ! $post ) {
+					$result['failed']++;
+					continue;
+				}
+
 				// Import title.
 				if ( ! empty( $row['title'] ) ) {
-					$existing = get_post_meta( $post_id, '_rationalseo_title', true );
-					if ( empty( $existing ) ) {
-						update_post_meta( $post_id, '_rationalseo_title', sanitize_text_field( $row['title'] ) );
-						$post_imported = true;
+					$title = $this->convert_aioseo_variables_for_post( $row['title'], $separator, $post );
+					if ( ! empty( $title ) ) {
+						$existing = get_post_meta( $post_id, '_rationalseo_title', true );
+						if ( empty( $existing ) ) {
+							update_post_meta( $post_id, '_rationalseo_title', sanitize_text_field( $title ) );
+							$post_imported = true;
+						}
 					}
 				}
 
 				// Import description.
 				if ( ! empty( $row['description'] ) ) {
-					$existing = get_post_meta( $post_id, '_rationalseo_desc', true );
-					if ( empty( $existing ) ) {
-						update_post_meta( $post_id, '_rationalseo_desc', sanitize_text_field( $row['description'] ) );
-						$post_imported = true;
+					$desc = $this->convert_aioseo_variables_for_post( $row['description'], $separator, $post );
+					if ( ! empty( $desc ) ) {
+						$existing = get_post_meta( $post_id, '_rationalseo_desc', true );
+						if ( empty( $existing ) ) {
+							update_post_meta( $post_id, '_rationalseo_desc', sanitize_text_field( $desc ) );
+							$post_imported = true;
+						}
 					}
 				}
 
