@@ -328,3 +328,46 @@ SEOPress uses `%%variable%%` (double percent) syntax, same as Yoast. Supported c
 **Batch Processing:** Post meta imports in batches of 100 to avoid timeouts.
 
 **Options:** `skip_existing` - Skip posts/redirects that already have RationalSEO data.
+
+### Redirection Plugin Importer (Implemented)
+The Redirection importer (`class-redirection-importer.php`) handles redirects from the Redirection plugin by John Godley.
+
+**Important:** This is a redirects-only importer. The Redirection plugin doesn't store SEO data (titles, descriptions) - only redirects.
+
+**Redirects Import:**
+- Source: `wp_redirection_items` database table
+- Only imports `action_type='url'` redirects (actual redirects, not error pages)
+- Only imports `match_type='url'` redirects (simple URL matching)
+- Complex match types (referrer, agent, login, header, cookie, role, IP, etc.) are skipped
+- Only imports `status='enabled'` redirects
+
+**Database Schema:**
+| Column | Purpose |
+|--------|---------|
+| `url` | Source URL to match |
+| `action_data` | Target URL in various formats (see below) |
+| `action_code` | HTTP status code (301, 302, 307, 410) |
+| `regex` | 0 = literal match, 1 = regex pattern |
+| `status` | 'enabled' or 'disabled' |
+| `action_type` | 'url' for redirects, 'error' for error pages |
+| `match_type` | 'url' for simple matching, others for conditional |
+
+**action_data Formats:**
+The `action_data` column stores the target URL in multiple possible formats:
+- Plain URL string: `/new-page` (most common)
+- JSON object: `{"url":"/new-page"}`
+- Serialized PHP array: `a:1:{s:3:"url";s:7:"/new-page";}`
+
+The importer's `parse_action_data()` method handles all three formats.
+
+**Status Code Handling:**
+| Redirection Code | RationalSEO Import |
+|------------------|-------------------|
+| 301 | Imported as 301 |
+| 302 | Imported as 302 |
+| 307 | Imported as 307 |
+| 308 | Converted to 301 (308 not supported) |
+| 410 | Imported as 410 |
+| 404 | Skipped (error type, not redirect) |
+
+**Options:** `skip_existing` - Skip redirects that already exist in RationalSEO.
