@@ -312,7 +312,7 @@ class RationalSEO_Import_Admin {
 								html += '<tr>';
 								for (var col in typeData.samples[i]) {
 									var val = typeData.samples[i][col];
-									html += '<td>' + (val ? escapeHtml(String(val).substring(0, 50)) : '&mdash;') + '</td>';
+									html += '<td>' + formatPreviewValue(val) + '</td>';
 								}
 								html += '</tr>';
 							}
@@ -420,6 +420,35 @@ class RationalSEO_Import_Admin {
 				var div = document.createElement('div');
 				div.appendChild(document.createTextNode(text));
 				return div.innerHTML;
+			}
+
+			function formatPreviewValue(val) {
+				if (val === null || val === undefined || val === '') {
+					return '&mdash;';
+				}
+
+				// Handle objects (like the meta field which contains key-value pairs).
+				if (typeof val === 'object' && val !== null) {
+					var parts = [];
+					for (var key in val) {
+						if (val.hasOwnProperty(key)) {
+							var label = key.replace(/^_rationalseo_/, '').replace(/_/g, ' ');
+							var value = String(val[key]).substring(0, 30);
+							if (String(val[key]).length > 30) {
+								value += '...';
+							}
+							parts.push('<strong>' + escapeHtml(label) + ':</strong> ' + escapeHtml(value));
+						}
+					}
+					return parts.length > 0 ? parts.join('<br>') : '&mdash;';
+				}
+
+				// Handle primitive values.
+				var strVal = String(val);
+				if (strVal.length > 50) {
+					return escapeHtml(strVal.substring(0, 50)) + '...';
+				}
+				return escapeHtml(strVal);
 			}
 		})(jQuery);
 		</script>

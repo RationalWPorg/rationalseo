@@ -162,6 +162,138 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 	}
 
 	/**
+	 * Get the Yoast separator setting, converted to actual character.
+	 *
+	 * @return string The separator character.
+	 */
+	private function get_yoast_separator() {
+		$yoast_titles = get_option( 'wpseo_titles', array() );
+		$separator    = '|'; // Default.
+
+		if ( ! empty( $yoast_titles['separator'] ) ) {
+			$separator = $yoast_titles['separator'];
+			if ( isset( $this->separator_map[ $separator ] ) ) {
+				$separator = $this->separator_map[ $separator ];
+			}
+		}
+
+		return $separator;
+	}
+
+	/**
+	 * Convert Yoast template variables for post meta, including post-specific variables.
+	 *
+	 * Unlike convert_yoast_variables() which is for site-wide settings,
+	 * this method can convert post-specific variables using the provided post object.
+	 *
+	 * @param string   $text      Text containing Yoast variables.
+	 * @param string   $separator The separator to use for %%sep%%.
+	 * @param \WP_Post $post      The post object for post-specific variables.
+	 * @return string Text with variables replaced.
+	 */
+	private function convert_yoast_variables_for_post( $text, $separator, $post ) {
+		if ( empty( $text ) || strpos( $text, '%%' ) === false ) {
+			return $text;
+		}
+
+		$site_name    = get_bloginfo( 'name' );
+		$site_tagline = get_bloginfo( 'description' );
+		$current_year = gmdate( 'Y' );
+		$current_month = gmdate( 'F' );
+		$current_day  = gmdate( 'j' );
+		$current_date = gmdate( get_option( 'date_format' ) );
+
+		// Get primary category if available.
+		$primary_category = '';
+		$categories       = get_the_category( $post->ID );
+		if ( ! empty( $categories ) ) {
+			$primary_category = $categories[0]->name;
+		}
+
+		// Get post excerpt or generate from content.
+		$excerpt = $post->post_excerpt;
+		if ( empty( $excerpt ) ) {
+			$excerpt = wp_trim_words( wp_strip_all_tags( $post->post_content ), 55, '...' );
+		}
+
+		// Build replacements array with all known variations.
+		$replacements = array(
+			// Site info.
+			'%%sitename%%'      => $site_name,
+			'%%sitetitle%%'     => $site_name,
+			'%%sitedesc%%'      => $site_tagline,
+			'%%tagline%%'       => $site_tagline,
+
+			// Separator.
+			'%%sep%%'           => $separator,
+			'%%separator%%'     => $separator,
+
+			// Pagination (empty for single posts).
+			'%%page%%'          => '',
+			'%%pagenumber%%'    => '',
+			'%%pagetotal%%'     => '',
+
+			// Date/time - both formats (with and without underscore).
+			'%%currentyear%%'   => $current_year,
+			'%%current_year%%'  => $current_year,
+			'%%currentmonth%%'  => $current_month,
+			'%%current_month%%' => $current_month,
+			'%%currentday%%'    => $current_day,
+			'%%current_day%%'   => $current_day,
+			'%%currentdate%%'   => $current_date,
+			'%%current_date%%'  => $current_date,
+			'%%currenttime%%'   => gmdate( get_option( 'time_format' ) ),
+			'%%current_time%%'  => gmdate( get_option( 'time_format' ) ),
+
+			// Post-specific variables.
+			'%%title%%'              => $post->post_title,
+			'%%post_title%%'         => $post->post_title,
+			'%%excerpt%%'            => $excerpt,
+			'%%excerpt_only%%'       => $post->post_excerpt,
+			'%%category%%'           => $primary_category,
+			'%%primary_category%%'   => $primary_category,
+			'%%pt_single%%'          => get_post_type_object( $post->post_type )->labels->singular_name ?? '',
+			'%%pt_plural%%'          => get_post_type_object( $post->post_type )->labels->name ?? '',
+			'%%id%%'                 => $post->ID,
+			'%%post_id%%'            => $post->ID,
+			'%%date%%'               => get_the_date( '', $post ),
+			'%%post_date%%'          => get_the_date( '', $post ),
+			'%%modified%%'           => get_the_modified_date( '', $post ),
+			'%%post_modified%%'      => get_the_modified_date( '', $post ),
+			'%%author%%'             => get_the_author_meta( 'display_name', $post->post_author ),
+			'%%name%%'               => get_the_author_meta( 'display_name', $post->post_author ),
+			'%%post_author%%'        => get_the_author_meta( 'display_name', $post->post_author ),
+			'%%userid%%'             => $post->post_author,
+			'%%post_year%%'          => get_the_date( 'Y', $post ),
+			'%%post_month%%'         => get_the_date( 'F', $post ),
+			'%%post_day%%'           => get_the_date( 'j', $post ),
+		);
+
+		// Apply replacements (case-insensitive).
+		foreach ( $replacements as $var => $value ) {
+			$text = str_ireplace( $var, $value, $text );
+		}
+
+		// Clean up any double spaces from empty replacements.
+		$text = preg_replace( '/\s+/', ' ', $text );
+		$text = trim( $text );
+
+		// Remove trailing/leading separators that might be left over.
+		$text = trim( $text, ' ' . $separator );
+
+		// If there are still unrecognized variables, remove them to avoid broken output.
+		// This catches custom/plugin-specific variables we don't support.
+		$text = preg_replace( '/%%[a-z_0-9]+%%/i', '', $text );
+
+		// Clean up again after removing variables.
+		$text = preg_replace( '/\s+/', ' ', $text );
+		$text = trim( $text, ' ' . $separator );
+		$text = trim( $text );
+
+		return $text;
+	}
+
+	/**
 	 * Get the unique slug for this importer.
 	 *
 	 * @return string
@@ -566,6 +698,9 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 		$yoast_keys = array_keys( $this->meta_mapping );
 		$placeholders = implode( ',', array_fill( 0, count( $yoast_keys ), '%s' ) );
 
+		// Get separator for variable conversion.
+		$separator = $this->get_yoast_separator();
+
 		// Get sample posts with Yoast meta (limit to 5 for preview).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$post_ids = $wpdb->get_col(
@@ -597,6 +732,12 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 					if ( '_yoast_wpseo_meta-robots-noindex' === $yoast_key ) {
 						$value = ( '1' === $value || 1 === $value ) ? '1' : '';
 					}
+
+					// Convert Yoast variables for title and description fields.
+					if ( in_array( $yoast_key, array( '_yoast_wpseo_title', '_yoast_wpseo_metadesc' ), true ) ) {
+						$value = $this->convert_yoast_variables_for_post( $value, $separator, $post );
+					}
+
 					if ( ! empty( $value ) ) {
 						$meta_preview['meta'][ $rational_key ] = $value;
 					}
@@ -755,6 +896,9 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 		$yoast_keys = array_keys( $this->meta_mapping );
 		$placeholders = implode( ',', array_fill( 0, count( $yoast_keys ), '%s' ) );
 
+		// Get separator for variable conversion.
+		$separator = $this->get_yoast_separator();
+
 		$offset = 0;
 		$has_more = true;
 
@@ -783,6 +927,13 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 					continue;
 				}
 
+				// Get the post object for variable conversion.
+				$post = get_post( $post_id );
+				if ( ! $post ) {
+					$result['failed']++;
+					continue;
+				}
+
 				foreach ( $this->meta_mapping as $yoast_key => $rational_key ) {
 					$value = get_post_meta( $post_id, $yoast_key, true );
 
@@ -796,6 +947,16 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 							continue;
 						}
 						$value = '1';
+					}
+
+					// Convert Yoast variables for title and description fields.
+					if ( in_array( $yoast_key, array( '_yoast_wpseo_title', '_yoast_wpseo_metadesc' ), true ) ) {
+						$value = $this->convert_yoast_variables_for_post( $value, $separator, $post );
+					}
+
+					// Skip if conversion resulted in empty value.
+					if ( empty( $value ) ) {
+						continue;
 					}
 
 					// Sanitize based on key type.

@@ -156,8 +156,8 @@ The Yoast importer (`class-yoast-importer.php`) handles:
 **Post Meta Import:**
 | Yoast Key | RationalSEO Key | Notes |
 |-----------|-----------------|-------|
-| `_yoast_wpseo_title` | `_rationalseo_title` | Direct copy |
-| `_yoast_wpseo_metadesc` | `_rationalseo_desc` | Direct copy |
+| `_yoast_wpseo_title` | `_rationalseo_title` | With variable conversion |
+| `_yoast_wpseo_metadesc` | `_rationalseo_desc` | With variable conversion |
 | `_yoast_wpseo_canonical` | `_rationalseo_canonical` | Direct copy |
 | `_yoast_wpseo_meta-robots-noindex` | `_rationalseo_noindex` | 1→'1', else skip |
 | `_yoast_wpseo_opengraph-image` | `_rationalseo_og_image` | Direct copy |
@@ -180,13 +180,25 @@ The Yoast importer (`class-yoast-importer.php`) handles:
 | `wpseo` | `msverify` | `verification_bing` |
 
 **Yoast Variable Conversion:**
-Since RationalSEO doesn't support template variables, Yoast variables are converted during import:
+Since RationalSEO doesn't support template variables, Yoast variables are converted during import for both settings AND post meta:
+
+*Site-wide variables:*
 - `%%sitename%%`, `%%sitetitle%%` → Site name
 - `%%sitedesc%%`, `%%tagline%%` → Site tagline
 - `%%sep%%`, `%%separator%%` → Title separator
 - `%%currentyear%%`, `%%current_year%%` → Current year
 - `%%currentmonth%%`, `%%current_month%%` → Current month
-- Post-specific variables (%%title%%, %%excerpt%%, etc.) cause the value to be skipped
+- `%%page%%`, `%%pagenumber%%` → Empty (for pagination)
+
+*Post-specific variables (for post meta import):*
+- `%%title%%`, `%%post_title%%` → Post title
+- `%%excerpt%%`, `%%excerpt_only%%` → Post excerpt
+- `%%category%%`, `%%primary_category%%` → Primary category
+- `%%author%%`, `%%name%%`, `%%post_author%%` → Author display name
+- `%%date%%`, `%%post_date%%` → Post date
+- `%%modified%%`, `%%post_modified%%` → Modified date
+- `%%pt_single%%`, `%%pt_plural%%` → Post type labels
+- Unrecognized variables are stripped from the output
 
 **Batch Processing:** Post meta imports in batches of 100 to avoid timeouts.
 
@@ -198,8 +210,8 @@ The Rank Math importer (`class-rankmath-importer.php`) handles:
 **Post Meta Import:**
 | Rank Math Key | RationalSEO Key | Notes |
 |---------------|-----------------|-------|
-| `rank_math_title` | `_rationalseo_title` | Direct copy |
-| `rank_math_description` | `_rationalseo_desc` | Direct copy |
+| `rank_math_title` | `_rationalseo_title` | With variable conversion |
+| `rank_math_description` | `_rationalseo_desc` | With variable conversion |
 | `rank_math_canonical_url` | `_rationalseo_canonical` | Direct copy |
 | `rank_math_robots` | `_rationalseo_noindex` | Checks array for 'noindex' |
 | `rank_math_facebook_image` | `_rationalseo_og_image` | Direct copy |
@@ -223,14 +235,26 @@ The Rank Math importer (`class-rankmath-importer.php`) handles:
 | `rank-math-options-general` | `bing_verify` | `verification_bing` |
 
 **Rank Math Variable Conversion:**
-Rank Math uses `%variable%` (single percent) syntax. Supported conversions:
+Rank Math uses `%variable%` (single percent) syntax. Variables are converted during import for both settings AND post meta:
+
+*Site-wide variables:*
 - `%sitename%`, `%site_title%` → Site name
 - `%sitedesc%` → Site tagline
 - `%sep%`, `%separator%` → Title separator
 - `%currentyear%`, `%currentmonth%`, `%currentday%`, `%currentdate%` → Date values
 - `%currenttime%`, `%currenttime(format)%` → Time values (custom PHP format supported)
 - `%org_name%`, `%org_url%`, `%org_logo%` → Organization info from Local SEO settings
-- Post-specific variables (%title%, %excerpt%, etc.) cause the value to be skipped
+
+*Post-specific variables (for post meta import):*
+- `%title%`, `%post_title%`, `%seo_title%` → Post title
+- `%excerpt%`, `%seo_description%` → Post excerpt
+- `%category%`, `%categories%`, `%primary_category%` → Primary category
+- `%focuskw%`, `%focus_keyword%`, `%keywords%` → Focus keyword
+- `%author%`, `%name%`, `%post_author%` → Author display name
+- `%date%`, `%post_date%` → Post date
+- `%customfield(name)%` → Custom field value
+- `%count(type)%` → Stripped (count variables)
+- Unrecognized variables are stripped from the output
 
 **Important:** Rank Math option names use **hyphens** (`rank-math-options-titles`), not underscores.
 
@@ -246,8 +270,8 @@ The AIOSEO importer (`class-aioseo-importer.php`) handles:
 **Post Meta Import (from `aioseo_posts` table):**
 | AIOSEO Column | RationalSEO Key | Notes |
 |---------------|-----------------|-------|
-| `title` | `_rationalseo_title` | Direct copy |
-| `description` | `_rationalseo_desc` | Direct copy |
+| `title` | `_rationalseo_title` | With variable conversion |
+| `description` | `_rationalseo_desc` | With variable conversion |
 | `canonical_url` | `_rationalseo_canonical` | Direct copy |
 | `robots_noindex` | `_rationalseo_noindex` | 1→'1' |
 | `og_image_custom_url` | `_rationalseo_og_image` | Direct copy |
@@ -270,13 +294,25 @@ The AIOSEO importer (`class-aioseo-importer.php`) handles:
 | `webmasterTools.bing` | `verification_bing` |
 
 **AIOSEO Variable Conversion:**
-AIOSEO uses `#variable` (hash prefix) syntax. Supported conversions:
+AIOSEO uses `#variable` (hash prefix) syntax. Variables are converted during import for both settings AND post meta:
+
+*Site-wide variables:*
 - `#site_title` → Site name
 - `#tagline` → Site tagline
-- `#separator_sa` → Title separator
+- `#separator_sa`, `#separator` → Title separator
 - `#current_year`, `#current_month`, `#current_day`, `#current_date` → Date values
-- `#page_number` → Empty (for static content)
-- Post-specific variables (#post_title, #post_excerpt, etc.) cause the value to be skipped
+- `#page_number` → Empty (for pagination)
+
+*Post-specific variables (for post meta import):*
+- `#post_title` → Post title
+- `#post_excerpt`, `#post_excerpt_only`, `#post_content` → Post excerpt/content
+- `#categories`, `#category`, `#category_title` → Primary category
+- `#author_name`, `#author_first_name`, `#author_last_name` → Author info
+- `#author_bio`, `#author_url` → Author meta
+- `#post_date`, `#post_day`, `#post_month`, `#post_year` → Post dates
+- `#focus_keyphrase` → Focus keyphrase from `keyphrases` JSON column
+- `#custom_field-FIELDNAME` → Custom field value (pattern matching)
+- Unrecognized variables are stripped from the output
 
 **Important:** AIOSEO options are stored as JSON in `aioseo_options`. Use `get_option_value()` helper with dot notation to access nested values.
 
@@ -290,8 +326,8 @@ The SEOPress importer (`class-seopress-importer.php`) handles:
 **Post Meta Import:**
 | SEOPress Key | RationalSEO Key | Notes |
 |--------------|-----------------|-------|
-| `_seopress_titles_title` | `_rationalseo_title` | Direct copy |
-| `_seopress_titles_desc` | `_rationalseo_desc` | Direct copy |
+| `_seopress_titles_title` | `_rationalseo_title` | With variable conversion |
+| `_seopress_titles_desc` | `_rationalseo_desc` | With variable conversion |
 | `_seopress_robots_canonical` | `_rationalseo_canonical` | Direct copy |
 | `_seopress_robots_index` | `_rationalseo_noindex` | 'yes'→'1' |
 | `_seopress_social_fb_img` | `_rationalseo_og_image` | Direct copy |
@@ -315,13 +351,27 @@ The SEOPress importer (`class-seopress-importer.php`) handles:
 | `seopress_advanced_option_name` | `seopress_advanced_advanced_bing` | `verification_bing` |
 
 **SEOPress Variable Conversion:**
-SEOPress uses `%%variable%%` (double percent) syntax, same as Yoast. Supported conversions:
+SEOPress uses `%%variable%%` (double percent) syntax, same as Yoast. Variables are converted during import for both settings AND post meta:
+
+*Site-wide variables:*
 - `%%sitetitle%%`, `%%sitename%%` → Site name
 - `%%tagline%%`, `%%sitedesc%%` → Site tagline
 - `%%sep%%` → Title separator
 - `%%currentyear%%`, `%%currentmonth%%`, `%%currentday%%`, `%%currentdate%%` → Date values
-- `%%page%%`, `%%current_pagination%%` → Empty (for static content)
-- Post-specific variables (%%title%%, %%excerpt%%, etc.) cause the value to be skipped
+- `%%page%%`, `%%current_pagination%%` → Empty (for pagination)
+
+*Post-specific variables (for post meta import):*
+- `%%post_title%%`, `%%title%%` → Post title
+- `%%post_excerpt%%`, `%%excerpt%%`, `%%post_content%%` → Post excerpt/content
+- `%%post_category%%`, `%%_category_title%%` → Primary category
+- `%%post_tag%%`, `%%tag%%` → Post tags
+- `%%post_author%%`, `%%author%%` → Author display name
+- `%%author_first_name%%`, `%%author_last_name%%`, `%%author_nickname%%` → Author meta
+- `%%post_date%%`, `%%date%%`, `%%post_modified_date%%` → Post dates
+- `%%target_keyword%%` → Target keyword from `_seopress_analysis_target_kw`
+- `%%_cf_FIELDNAME%%` → Custom field value (pattern matching)
+- `%%_ct_TAXONOMY%%` → Custom taxonomy term (pattern matching)
+- Unrecognized variables are stripped from the output
 
 **Important:** SEOPress stores noindex as 'yes' string (not '1' like other plugins).
 

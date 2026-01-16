@@ -134,6 +134,168 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 	}
 
 	/**
+	 * Get the SEOPress separator setting.
+	 *
+	 * @return string The separator character.
+	 */
+	private function get_seopress_separator() {
+		$sp_titles = get_option( 'seopress_titles_option_name', array() );
+		$separator = '-'; // SEOPress default.
+
+		if ( ! empty( $sp_titles['seopress_titles_sep'] ) ) {
+			$separator = $sp_titles['seopress_titles_sep'];
+		}
+
+		return $separator;
+	}
+
+	/**
+	 * Convert SEOPress template variables for post meta, including post-specific variables.
+	 *
+	 * Unlike convert_seopress_variables() which is for site-wide settings,
+	 * this method can convert post-specific variables using the provided post object.
+	 *
+	 * @param string   $text      Text containing SEOPress variables.
+	 * @param string   $separator The separator to use for %%sep%%.
+	 * @param \WP_Post $post      The post object for post-specific variables.
+	 * @return string Text with variables replaced.
+	 */
+	private function convert_seopress_variables_for_post( $text, $separator, $post ) {
+		if ( empty( $text ) || strpos( $text, '%%' ) === false ) {
+			return $text;
+		}
+
+		$site_name     = get_bloginfo( 'name' );
+		$site_tagline  = get_bloginfo( 'description' );
+		$current_year  = gmdate( 'Y' );
+		$current_month = gmdate( 'F' );
+		$current_day   = gmdate( 'j' );
+		$current_date  = gmdate( get_option( 'date_format' ) );
+
+		// Get primary category if available.
+		$primary_category = '';
+		$categories       = get_the_category( $post->ID );
+		if ( ! empty( $categories ) ) {
+			$primary_category = $categories[0]->name;
+		}
+
+		// Get post excerpt or generate from content.
+		$excerpt = $post->post_excerpt;
+		if ( empty( $excerpt ) ) {
+			$excerpt = wp_trim_words( wp_strip_all_tags( $post->post_content ), 55, '...' );
+		}
+
+		// Get target keyword if set (SEOPress stores this as post meta).
+		$target_keyword = get_post_meta( $post->ID, '_seopress_analysis_target_kw', true );
+
+		// Get post tags.
+		$tags     = get_the_tags( $post->ID );
+		$tag_list = '';
+		if ( ! empty( $tags ) ) {
+			$tag_names = wp_list_pluck( $tags, 'name' );
+			$tag_list  = implode( ', ', $tag_names );
+		}
+
+		// Build replacements array with all known variations.
+		$replacements = array(
+			// Site info.
+			'%%sitetitle%%'          => $site_name,
+			'%%sitename%%'           => $site_name,
+			'%%tagline%%'            => $site_tagline,
+			'%%sitedesc%%'           => $site_tagline,
+
+			// Separator.
+			'%%sep%%'                => $separator,
+
+			// Pagination (empty for single posts).
+			'%%page%%'               => '',
+			'%%current_pagination%%' => '',
+			'%%cpt_plural%%'         => get_post_type_object( $post->post_type )->labels->name ?? '',
+
+			// Date/time.
+			'%%currentyear%%'        => $current_year,
+			'%%currentmonth%%'       => $current_month,
+			'%%currentmonth_short%%' => gmdate( 'M' ),
+			'%%currentmonth_num%%'   => gmdate( 'n' ),
+			'%%currentday%%'         => $current_day,
+			'%%currentdate%%'        => $current_date,
+			'%%currenttime%%'        => gmdate( get_option( 'time_format' ) ),
+
+			// Post-specific variables.
+			'%%post_title%%'              => $post->post_title,
+			'%%title%%'                   => $post->post_title,
+			'%%post_excerpt%%'            => $excerpt,
+			'%%excerpt%%'                 => $excerpt,
+			'%%post_content%%'            => wp_trim_words( wp_strip_all_tags( $post->post_content ), 55, '...' ),
+			'%%post_date%%'               => get_the_date( '', $post ),
+			'%%date%%'                    => get_the_date( '', $post ),
+			'%%post_modified_date%%'      => get_the_modified_date( '', $post ),
+			'%%post_author%%'             => get_the_author_meta( 'display_name', $post->post_author ),
+			'%%author%%'                  => get_the_author_meta( 'display_name', $post->post_author ),
+			'%%author_first_name%%'       => get_the_author_meta( 'first_name', $post->post_author ),
+			'%%author_last_name%%'        => get_the_author_meta( 'last_name', $post->post_author ),
+			'%%author_nickname%%'         => get_the_author_meta( 'nickname', $post->post_author ),
+			'%%author_bio%%'              => get_the_author_meta( 'description', $post->post_author ),
+			'%%post_category%%'           => $primary_category,
+			'%%_category_title%%'         => $primary_category,
+			'%%post_tag%%'                => $tag_list,
+			'%%tag%%'                     => $tag_list,
+			'%%target_keyword%%'          => $target_keyword,
+			'%%post_thumbnail_url%%'      => get_the_post_thumbnail_url( $post->ID, 'full' ) ?: '',
+			'%%post_url%%'                => get_permalink( $post ),
+			'%%permalink%%'               => get_permalink( $post ),
+			'%%post_id%%'                 => $post->ID,
+			'%%wc_single_cat%%'           => $primary_category, // WooCommerce category fallback.
+			'%%wc_single_tag%%'           => $tag_list, // WooCommerce tag fallback.
+		);
+
+		// Apply replacements (case-insensitive).
+		foreach ( $replacements as $var => $value ) {
+			$text = str_ireplace( $var, $value, $text );
+		}
+
+		// Handle %%_cf_FIELDNAME%% pattern for custom fields.
+		$text = preg_replace_callback(
+			'/%%_cf_([a-zA-Z0-9_-]+)%%/i',
+			function ( $matches ) use ( $post ) {
+				$field_value = get_post_meta( $post->ID, $matches[1], true );
+				return is_string( $field_value ) ? $field_value : '';
+			},
+			$text
+		);
+
+		// Handle %%_ct_TAXONOMY%% pattern for custom taxonomies.
+		$text = preg_replace_callback(
+			'/%%_ct_([a-zA-Z0-9_-]+)%%/i',
+			function ( $matches ) use ( $post ) {
+				$terms = get_the_terms( $post->ID, $matches[1] );
+				if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
+					return $terms[0]->name;
+				}
+				return '';
+			},
+			$text
+		);
+
+		// Clean up any double spaces from empty replacements.
+		$text = preg_replace( '/\s+/', ' ', $text );
+		$text = trim( $text );
+
+		// Remove trailing/leading separators that might be left over.
+		$text = trim( $text, ' ' . $separator );
+
+		// If there are still unrecognized variables, remove them to avoid broken output.
+		$text = preg_replace( '/%%[a-z_0-9]+%%/i', '', $text );
+
+		// Clean up again after removing variables.
+		$text = preg_replace( '/\s+/', ' ', $text );
+		$text = trim( $text, ' ' . $separator );
+		$text = trim( $text );
+
+		return $text;
+	}
+
+	/**
 	 * Get the unique slug for this importer.
 	 *
 	 * @return string
@@ -485,6 +647,9 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 		);
 		$placeholders = implode( ',', array_fill( 0, count( $meta_keys ), '%s' ) );
 
+		// Get separator for variable conversion.
+		$separator = $this->get_seopress_separator();
+
 		// Get sample posts with SEOPress meta (limit to 5 for preview).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$post_ids = $wpdb->get_col(
@@ -513,7 +678,14 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 			foreach ( $this->meta_mapping as $sp_key => $rational_key ) {
 				$value = get_post_meta( $post_id, $sp_key, true );
 				if ( ! empty( $value ) ) {
-					$meta_preview['meta'][ $rational_key ] = $value;
+					// Convert SEOPress variables for title and description fields.
+					if ( in_array( $sp_key, array( '_seopress_titles_title', '_seopress_titles_desc' ), true ) ) {
+						$value = $this->convert_seopress_variables_for_post( $value, $separator, $post );
+					}
+
+					if ( ! empty( $value ) ) {
+						$meta_preview['meta'][ $rational_key ] = $value;
+					}
 				}
 			}
 
@@ -675,6 +847,9 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 		);
 		$placeholders = implode( ',', array_fill( 0, count( $meta_keys ), '%s' ) );
 
+		// Get separator for variable conversion.
+		$separator = $this->get_seopress_separator();
+
 		$offset   = 0;
 		$has_more = true;
 
@@ -703,10 +878,27 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 					continue;
 				}
 
+				// Get the post object for variable conversion.
+				$post = get_post( $post_id );
+				if ( ! $post ) {
+					$result['failed']++;
+					continue;
+				}
+
 				// Standard meta mapping.
 				foreach ( $this->meta_mapping as $sp_key => $rational_key ) {
 					$value = get_post_meta( $post_id, $sp_key, true );
 
+					if ( empty( $value ) ) {
+						continue;
+					}
+
+					// Convert SEOPress variables for title and description fields.
+					if ( in_array( $sp_key, array( '_seopress_titles_title', '_seopress_titles_desc' ), true ) ) {
+						$value = $this->convert_seopress_variables_for_post( $value, $separator, $post );
+					}
+
+					// Skip if conversion resulted in empty value.
 					if ( empty( $value ) ) {
 						continue;
 					}
