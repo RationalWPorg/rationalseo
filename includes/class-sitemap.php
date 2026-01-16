@@ -529,6 +529,7 @@ class RationalSEO_Sitemap {
 		global $wpdb;
 
 		// Delete all transients with our prefix.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Cache clearing requires direct query; caching the deletion would be counterproductive.
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
@@ -538,6 +539,7 @@ class RationalSEO_Sitemap {
 		);
 
 		// Delete stale backups.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Cache clearing requires direct query; caching the deletion would be counterproductive.
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",

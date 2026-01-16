@@ -208,7 +208,7 @@ class RationalSEO_Redirection_Importer implements RationalSEO_Importer_Interface
 
 		// Only count URL-type redirects with simple URL matching.
 		// Skip complex match types (referrer, agent, login, header, cookie, role, server, ip, page, language).
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$count = $wpdb->get_var(
 			"SELECT COUNT(*) FROM {$table} WHERE action_type = 'url' AND match_type = 'url' AND status = 'enabled'" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
@@ -237,7 +237,7 @@ class RationalSEO_Redirection_Importer implements RationalSEO_Importer_Interface
 			$sql .= $wpdb->prepare( ' LIMIT %d', $limit );
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$results = $wpdb->get_results( $sql );
 
 		if ( empty( $results ) ) {

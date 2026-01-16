@@ -1,4 +1,4 @@
-=== Rational SEO ===
+=== RationalSEO ===
 Contributors: rationalwp
 Tags: seo, meta tags, sitemap, schema, redirects
 Requires at least: 5.0
