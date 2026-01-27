@@ -171,8 +171,8 @@ The Yoast importer (`class-yoast-importer.php`) handles:
 | Yoast Source | Yoast Key | RationalSEO Key |
 |--------------|-----------|-----------------|
 | `wpseo_titles` | `separator` | `separator` (converts `sc-*` codes) |
-| `wpseo_titles` | `title-home-wpseo` | `home_title` (with variable conversion) |
-| `wpseo_titles` | `metadesc-home-wpseo` | `home_description` (with variable conversion) |
+| `wpseo_titles` | `title-home-wpseo` | Front page `_rationalseo_title` post meta (with variable conversion) |
+| `wpseo_titles` | `metadesc-home-wpseo` | Front page `_rationalseo_desc` post meta (with variable conversion) |
 | `wpseo_social` | `og_default_image` | `social_default_image` |
 | `wpseo_social` | `twitter_card_type` | `twitter_card_type` |
 | `wpseo_titles` | `company_logo` | `site_logo` |
@@ -226,8 +226,8 @@ The Rank Math importer (`class-rankmath-importer.php`) handles:
 | Rank Math Source | Rank Math Key | RationalSEO Key |
 |------------------|---------------|-----------------|
 | `rank-math-options-titles` | `title_separator` | `separator` |
-| `rank-math-options-titles` | `homepage_title` | `home_title` (with variable conversion) |
-| `rank-math-options-titles` | `homepage_description` | `home_description` (with variable conversion) |
+| `rank-math-options-titles` | `homepage_title` | Front page `_rationalseo_title` post meta (with variable conversion) |
+| `rank-math-options-titles` | `homepage_description` | Front page `_rationalseo_desc` post meta (with variable conversion) |
 | `rank-math-options-titles` | `open_graph_image` | `social_default_image` |
 | `rank-math-options-titles` | `twitter_card_type` | `twitter_card_type` |
 | `rank-math-options-titles` | `knowledgegraph_logo` | `site_logo` |
@@ -285,8 +285,8 @@ The AIOSEO importer (`class-aioseo-importer.php`) handles:
 | AIOSEO Path | RationalSEO Key |
 |-------------|-----------------|
 | `searchAppearance.global.separator` | `separator` |
-| `searchAppearance.global.siteTitle` | `home_title` (with variable conversion) |
-| `searchAppearance.global.metaDescription` | `home_description` (with variable conversion) |
+| `searchAppearance.global.siteTitle` | Front page `_rationalseo_title` post meta (with variable conversion) |
+| `searchAppearance.global.metaDescription` | Front page `_rationalseo_desc` post meta (with variable conversion) |
 | `social.facebook.general.defaultImagePosts` | `social_default_image` |
 | `social.twitter.general.defaultCardType` | `twitter_card_type` |
 | `searchAppearance.global.schema.organizationLogo` | `site_logo` |
@@ -342,8 +342,8 @@ The SEOPress importer (`class-seopress-importer.php`) handles:
 | SEOPress Source | SEOPress Key | RationalSEO Key |
 |-----------------|--------------|-----------------|
 | `seopress_titles_option_name` | `seopress_titles_sep` | `separator` |
-| `seopress_titles_option_name` | `seopress_titles_home_site_title` | `home_title` (with variable conversion) |
-| `seopress_titles_option_name` | `seopress_titles_home_site_desc` | `home_description` (with variable conversion) |
+| `seopress_titles_option_name` | `seopress_titles_home_site_title` | Front page `_rationalseo_title` post meta (with variable conversion) |
+| `seopress_titles_option_name` | `seopress_titles_home_site_desc` | Front page `_rationalseo_desc` post meta (with variable conversion) |
 | `seopress_social_option_name` | `seopress_social_facebook_img` | `social_default_image` |
 | `seopress_social_option_name` | `seopress_social_twitter_card_img_size` | `twitter_card_type` |
 | `seopress_social_option_name` | `seopress_social_knowledge_img` | `site_logo` |

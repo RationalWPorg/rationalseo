@@ -113,13 +113,28 @@ class RationalSEO_Frontend {
 		$separator = $this->settings->get( 'separator', '|' );
 		$site_name = $this->settings->get( 'site_name', get_bloginfo( 'name' ) );
 
-		// Homepage.
-		if ( is_front_page() || is_home() ) {
-			$home_title = $this->settings->get( 'home_title' );
-			if ( ! empty( $home_title ) ) {
-				return $home_title;
+		// Homepage (static front page or default homepage).
+		if ( is_front_page() ) {
+			$front_page_id = get_option( 'page_on_front' );
+			if ( $front_page_id ) {
+				$custom_title = get_post_meta( $front_page_id, '_rationalseo_title', true );
+				if ( ! empty( $custom_title ) ) {
+					return $custom_title;
+				}
 			}
-			return $site_name;
+			return sprintf( '%s %s %s', $site_name, $separator, get_bloginfo( 'description' ) );
+		}
+
+		// Blog page (separate posts page).
+		if ( is_home() ) {
+			$blog_page_id = get_option( 'page_for_posts' );
+			if ( $blog_page_id ) {
+				$custom_title = get_post_meta( $blog_page_id, '_rationalseo_title', true );
+				if ( ! empty( $custom_title ) ) {
+					return $custom_title;
+				}
+			}
+			return sprintf( '%s %s %s', __( 'Blog', 'rationalseo' ), $separator, $site_name );
 		}
 
 		// Singular posts/pages.
@@ -191,11 +206,26 @@ class RationalSEO_Frontend {
 	 * @return string
 	 */
 	private function get_description() {
-		// Homepage.
-		if ( is_front_page() || is_home() ) {
-			$home_description = $this->settings->get( 'home_description' );
-			if ( ! empty( $home_description ) ) {
-				return $this->truncate_description( $home_description );
+		// Homepage (static front page or default homepage).
+		if ( is_front_page() ) {
+			$front_page_id = get_option( 'page_on_front' );
+			if ( $front_page_id ) {
+				$custom_desc = get_post_meta( $front_page_id, '_rationalseo_desc', true );
+				if ( ! empty( $custom_desc ) ) {
+					return $this->truncate_description( $custom_desc );
+				}
+			}
+			return $this->truncate_description( get_bloginfo( 'description' ) );
+		}
+
+		// Blog page (separate posts page).
+		if ( is_home() ) {
+			$blog_page_id = get_option( 'page_for_posts' );
+			if ( $blog_page_id ) {
+				$custom_desc = get_post_meta( $blog_page_id, '_rationalseo_desc', true );
+				if ( ! empty( $custom_desc ) ) {
+					return $this->truncate_description( $custom_desc );
+				}
 			}
 			return $this->truncate_description( get_bloginfo( 'description' ) );
 		}
