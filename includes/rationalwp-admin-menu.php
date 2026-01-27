@@ -5,10 +5,11 @@
  * Shared file that creates a parent menu for all RationalWP plugins.
  * Include this file in each plugin - it handles deduplication automatically.
  *
- * Note: This file intentionally uses 'rationalwp' as the text domain instead of
- * individual plugin text domains. This ensures consistent translations for the
- * shared parent menu across all RationalWP plugins (RationalCleanup, RationalAudit, etc.).
- * The 'rationalwp' text domain is shared across the plugin suite for the menu UI.
+ * WordPress.org Compliance: The text domain MUST match the plugin slug. The canonical
+ * version of this file uses %%TEXT_DOMAIN%% as a placeholder. When integrating into
+ * a plugin, replace all instances of %%TEXT_DOMAIN%% with the plugin's text domain
+ * (e.g., 'rationalcontent', 'rationalcleanup'). The function_exists() guards ensure
+ * only the first loaded version executes, so text domain differences don't conflict.
  *
  * @package RationalWP
  * @version 1.0.0
@@ -60,8 +61,8 @@ if ( ! function_exists( 'rationalwp_register_parent_menu' ) ) {
 		}
 
 		add_menu_page(
-			__( 'RationalWP', 'rationalwp' ),
-			__( 'RationalWP', 'rationalwp' ),
+			__( 'RationalWP', 'rationalseo' ),
+			__( 'RationalWP', 'rationalseo' ),
 			'manage_options',
 			'rationalwp',
 			'rationalwp_render_parent_page',
@@ -69,8 +70,9 @@ if ( ! function_exists( 'rationalwp_register_parent_menu' ) ) {
 			81 // After Settings (80).
 		);
 	}
+
+	add_action( 'admin_menu', 'rationalwp_register_parent_menu', 5 );
 }
-add_action( 'admin_menu', 'rationalwp_register_parent_menu', 5 );
 
 if ( ! function_exists( 'rationalwp_fetch_remote_plugins' ) ) {
 	/**
@@ -181,17 +183,17 @@ if ( ! function_exists( 'rationalwp_render_parent_page' ) ) {
 		$installed = get_plugins();
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'RationalWP Plugins', 'rationalwp' ); ?></h1>
-			<p><?php esc_html_e( 'Practical tools for WordPress professionals.', 'rationalwp' ); ?></p>
+			<h1><?php esc_html_e( 'RationalWP Plugins', 'rationalseo' ); ?></h1>
+			<p><?php esc_html_e( 'Practical tools for WordPress professionals.', 'rationalseo' ); ?></p>
 
 			<?php if ( empty( $plugins ) ) : ?>
 				<div class="notice notice-warning">
 					<p>
-						<?php esc_html_e( 'Unable to load plugin information. Please check your internet connection and try again later.', 'rationalwp' ); ?>
+						<?php esc_html_e( 'Unable to load plugin information. Please check your internet connection and try again later.', 'rationalseo' ); ?>
 						<?php if ( current_user_can( 'manage_options' ) ) : ?>
 							<br>
-							<?php /* translators: %s: URL to the plugins JSON file */ ?>
-						<small><?php printf( esc_html__( 'Plugin data is fetched from %s', 'rationalwp' ), '<code>' . esc_html( RATIONALWP_PLUGINS_JSON_URL ) . '</code>' ); ?></small>
+							<?php /* translators: %s: URL where plugin data is fetched from */ ?>
+							<small><?php printf( esc_html__( 'Plugin data is fetched from %s', 'rationalseo' ), '<code>' . esc_html( RATIONALWP_PLUGINS_JSON_URL ) . '</code>' ); ?></small>
 						<?php endif; ?>
 					</p>
 				</div>
@@ -206,19 +208,19 @@ if ( ! function_exists( 'rationalwp_render_parent_page' ) ) {
 						<h3 style="margin-top: 0; margin-bottom: 10px;">
 							<?php echo esc_html( $plugin['name'] ); ?>
 							<?php if ( $is_active ) : ?>
-								<span style="background: #00a32a; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 3px; margin-left: 8px; vertical-align: middle;"><?php esc_html_e( 'Active', 'rationalwp' ); ?></span>
+								<span style="background: #00a32a; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 3px; margin-left: 8px; vertical-align: middle;"><?php esc_html_e( 'Active', 'rationalseo' ); ?></span>
 							<?php elseif ( $is_installed ) : ?>
-								<span style="background: #dba617; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 3px; margin-left: 8px; vertical-align: middle;"><?php esc_html_e( 'Inactive', 'rationalwp' ); ?></span>
+								<span style="background: #dba617; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 3px; margin-left: 8px; vertical-align: middle;"><?php esc_html_e( 'Inactive', 'rationalseo' ); ?></span>
 							<?php endif; ?>
 						</h3>
 						<p style="color: #646970; margin-bottom: 15px;"><?php echo esc_html( $plugin['description'] ); ?></p>
 						<div class="rationalwp-plugin-actions">
 							<?php if ( $is_active ) : ?>
-								<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $plugin['menu_slug'] ) ); ?>" class="button button-primary"><?php esc_html_e( 'Settings', 'rationalwp' ); ?></a>
+								<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $plugin['menu_slug'] ) ); ?>" class="button button-primary"><?php esc_html_e( 'Settings', 'rationalseo' ); ?></a>
 							<?php elseif ( $is_installed ) : ?>
-								<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'plugins.php?action=activate&plugin=' . urlencode( $plugin['file'] ) ), 'activate-plugin_' . $plugin['file'] ) ); ?>" class="button button-primary"><?php esc_html_e( 'Activate', 'rationalwp' ); ?></a>
+								<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'plugins.php?action=activate&plugin=' . urlencode( $plugin['file'] ) ), 'activate-plugin_' . $plugin['file'] ) ); ?>" class="button button-primary"><?php esc_html_e( 'Activate', 'rationalseo' ); ?></a>
 							<?php else : ?>
-								<a href="<?php echo esc_url( $plugin['url'] ); ?>" class="button" target="_blank"><?php esc_html_e( 'Learn More', 'rationalwp' ); ?></a>
+								<a href="<?php echo esc_url( $plugin['url'] ); ?>" class="button" target="_blank"><?php esc_html_e( 'Learn More', 'rationalseo' ); ?></a>
 							<?php endif; ?>
 						</div>
 					</div>
