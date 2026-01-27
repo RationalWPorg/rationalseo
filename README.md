@@ -59,7 +59,7 @@ Located at **Settings > RationalSEO** with four tabs:
 
 | Tab | Settings |
 |-----|----------|
-| **General** | Site type, name, logo, title separator, verification codes, homepage title/description |
+| **General** | Site type, name, logo, title separator, verification codes |
 | **Social** | Default social image, Twitter card type |
 | **Sitemaps** | Enable/disable, content freshness, post type exclusions |
 | **Redirects** | Auto-redirect on slug change, redirect manager |
@@ -100,8 +100,6 @@ array(
     'site_logo'              => '',
     'verification_google'    => '',
     'verification_bing'      => '',
-    'home_title'             => '',
-    'home_description'       => '',
     'social_default_image'   => '',
     'twitter_card_type'      => 'summary_large_image',
     'sitemap_enabled'        => true,
