@@ -836,8 +836,8 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		// Setting labels for display.
 		$setting_labels = array(
 			'separator'            => __( 'Title Separator', 'rationalseo' ),
-			'home_title'           => __( 'Home Title', 'rationalseo' ),
-			'home_description'     => __( 'Home Description', 'rationalseo' ),
+			'home_title'           => __( 'Front Page Title', 'rationalseo' ),
+			'home_description'     => __( 'Front Page Description', 'rationalseo' ),
 			'social_default_image' => __( 'Default Social Image', 'rationalseo' ),
 			'twitter_card_type'    => __( 'Twitter Card Type', 'rationalseo' ),
 			'site_logo'            => __( 'Site Logo', 'rationalseo' ),
@@ -1178,8 +1178,8 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		// Setting labels for display.
 		$setting_labels = array(
 			'separator'            => __( 'Title Separator', 'rationalseo' ),
-			'home_title'           => __( 'Home Title', 'rationalseo' ),
-			'home_description'     => __( 'Home Description', 'rationalseo' ),
+			'home_title'           => __( 'Front Page Title', 'rationalseo' ),
+			'home_description'     => __( 'Front Page Description', 'rationalseo' ),
 			'social_default_image' => __( 'Default Social Image', 'rationalseo' ),
 			'twitter_card_type'    => __( 'Twitter Card Type', 'rationalseo' ),
 			'site_logo'            => __( 'Site Logo', 'rationalseo' ),
@@ -1197,21 +1197,23 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 			$separator = '-'; // Default for variable conversion.
 		}
 
-		// Home title - convert AIOSEO variables to actual values.
-		$site_title = $this->get_option_value( $options, 'searchAppearance.global.siteTitle', '' );
-		if ( ! empty( $site_title ) ) {
-			$home_title = $this->convert_aioseo_variables( $site_title, $separator );
-			if ( ! empty( $home_title ) ) {
-				$settings_to_import['home_title'] = sanitize_text_field( $home_title );
+		// Home title and description - write to front page post meta.
+		$front_page_id = get_option( 'page_on_front' );
+		if ( $front_page_id ) {
+			$site_title = $this->get_option_value( $options, 'searchAppearance.global.siteTitle', '' );
+			if ( ! empty( $site_title ) ) {
+				$home_title = $this->convert_aioseo_variables( $site_title, $separator );
+				if ( ! empty( $home_title ) ) {
+					update_post_meta( $front_page_id, '_rationalseo_title', sanitize_text_field( $home_title ) );
+				}
 			}
-		}
 
-		// Home description - convert AIOSEO variables to actual values.
-		$meta_desc = $this->get_option_value( $options, 'searchAppearance.global.metaDescription', '' );
-		if ( ! empty( $meta_desc ) ) {
-			$home_desc = $this->convert_aioseo_variables( $meta_desc, $separator );
-			if ( ! empty( $home_desc ) ) {
-				$settings_to_import['home_description'] = sanitize_text_field( $home_desc );
+			$meta_desc = $this->get_option_value( $options, 'searchAppearance.global.metaDescription', '' );
+			if ( ! empty( $meta_desc ) ) {
+				$home_desc = $this->convert_aioseo_variables( $meta_desc, $separator );
+				if ( ! empty( $home_desc ) ) {
+					update_post_meta( $front_page_id, '_rationalseo_desc', sanitize_text_field( $home_desc ) );
+				}
 			}
 		}
 

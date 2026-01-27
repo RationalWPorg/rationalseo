@@ -145,30 +145,6 @@ class RationalSEO_Admin {
 			'rationalseo_webmaster'
 		);
 
-		// Homepage Section.
-		add_settings_section(
-			'rationalseo_homepage',
-			__( 'Homepage', 'rationalseo' ),
-			array( $this, 'render_section_homepage' ),
-			'rationalseo'
-		);
-
-		add_settings_field(
-			'home_title',
-			__( 'Custom Title', 'rationalseo' ),
-			array( $this, 'render_field_home_title' ),
-			'rationalseo',
-			'rationalseo_homepage'
-		);
-
-		add_settings_field(
-			'home_description',
-			__( 'Custom Description', 'rationalseo' ),
-			array( $this, 'render_field_home_description' ),
-			'rationalseo',
-			'rationalseo_homepage'
-		);
-
 		// Social Section.
 		add_settings_section(
 			'rationalseo_social_section',
@@ -273,14 +249,6 @@ class RationalSEO_Admin {
 
 		$sanitized['verification_bing'] = isset( $input['verification_bing'] )
 			? sanitize_text_field( $input['verification_bing'] )
-			: '';
-
-		$sanitized['home_title'] = isset( $input['home_title'] )
-			? sanitize_text_field( $input['home_title'] )
-			: '';
-
-		$sanitized['home_description'] = isset( $input['home_description'] )
-			? sanitize_textarea_field( $input['home_description'] )
 			: '';
 
 		$sanitized['social_default_image'] = isset( $input['social_default_image'] )
@@ -453,12 +421,6 @@ class RationalSEO_Admin {
 		echo '<p>' . esc_html__( 'Enter verification codes for webmaster tools.', 'rationalseo' ) . '</p>';
 	}
 
-	/**
-	 * Render Homepage section description.
-	 */
-	public function render_section_homepage() {
-		echo '<p>' . esc_html__( 'Override the default homepage title and description.', 'rationalseo' ) . '</p>';
-	}
 
 	/**
 	 * Render Site Type field.
@@ -574,37 +536,6 @@ class RationalSEO_Admin {
 		<?php
 	}
 
-	/**
-	 * Render Home Title field.
-	 */
-	public function render_field_home_title() {
-		$value = $this->settings->get( 'home_title', '' );
-		?>
-		<input type="text"
-			name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[home_title]"
-			id="home_title"
-			value="<?php echo esc_attr( $value ); ?>"
-			class="large-text"
-			placeholder="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>">
-		<p class="description"><?php esc_html_e( 'Custom title for the homepage. Leave empty to use site name.', 'rationalseo' ); ?></p>
-		<?php
-	}
-
-	/**
-	 * Render Home Description field.
-	 */
-	public function render_field_home_description() {
-		$value = $this->settings->get( 'home_description', '' );
-		?>
-		<textarea
-			name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[home_description]"
-			id="home_description"
-			rows="3"
-			class="large-text"
-			placeholder="<?php echo esc_attr( get_bloginfo( 'description' ) ); ?>"><?php echo esc_textarea( $value ); ?></textarea>
-		<p class="description"><?php esc_html_e( 'Custom meta description for the homepage. Leave empty to use site tagline.', 'rationalseo' ); ?></p>
-		<?php
-	}
 
 	/**
 	 * Render Social section description.
