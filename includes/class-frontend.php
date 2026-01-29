@@ -155,6 +155,11 @@ class RationalSEO_Frontend {
 		if ( is_archive() ) {
 			if ( is_category() || is_tag() || is_tax() ) {
 				$term = get_queried_object();
+				// Check for custom term title first.
+				$custom_title = get_term_meta( $term->term_id, '_rationalseo_term_title', true );
+				if ( ! empty( $custom_title ) ) {
+					return $custom_title;
+				}
 				return sprintf( '%s %s %s', $term->name, $separator, $site_name );
 			}
 
@@ -255,6 +260,11 @@ class RationalSEO_Frontend {
 		if ( is_archive() ) {
 			if ( is_category() || is_tag() || is_tax() ) {
 				$term = get_queried_object();
+				// Check for custom term description first.
+				$custom_desc = get_term_meta( $term->term_id, '_rationalseo_term_desc', true );
+				if ( ! empty( $custom_desc ) ) {
+					return $this->truncate_description( $custom_desc );
+				}
 				if ( ! empty( $term->description ) ) {
 					return $this->truncate_description( $term->description );
 				}
@@ -310,6 +320,15 @@ class RationalSEO_Frontend {
 		if ( is_singular() ) {
 			$post    = get_queried_object();
 			$noindex = get_post_meta( $post->ID, '_rationalseo_noindex', true );
+			if ( $noindex ) {
+				$robots[0] = 'noindex';
+			}
+		}
+
+		// Check for noindex on taxonomy archives.
+		if ( is_category() || is_tag() || is_tax() ) {
+			$term    = get_queried_object();
+			$noindex = get_term_meta( $term->term_id, '_rationalseo_term_noindex', true );
 			if ( $noindex ) {
 				$robots[0] = 'noindex';
 			}
@@ -371,6 +390,11 @@ class RationalSEO_Frontend {
 		if ( is_archive() ) {
 			if ( is_category() || is_tag() || is_tax() ) {
 				$term = get_queried_object();
+				// Check for custom canonical first.
+				$custom_canonical = get_term_meta( $term->term_id, '_rationalseo_term_canonical', true );
+				if ( ! empty( $custom_canonical ) ) {
+					return $custom_canonical;
+				}
 				return get_term_link( $term );
 			}
 
@@ -494,6 +518,15 @@ class RationalSEO_Frontend {
 				if ( $thumbnail_url ) {
 					return $thumbnail_url;
 				}
+			}
+		}
+
+		// Try custom social image for taxonomy archives.
+		if ( is_category() || is_tag() || is_tax() ) {
+			$term         = get_queried_object();
+			$custom_image = get_term_meta( $term->term_id, '_rationalseo_term_og_image', true );
+			if ( ! empty( $custom_image ) ) {
+				return $custom_image;
 			}
 		}
 

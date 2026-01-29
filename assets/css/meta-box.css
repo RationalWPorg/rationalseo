@@ -72,3 +72,67 @@
 .rationalseo-advanced-content .rationalseo-field:first-child {
 	margin-top: 0;
 }
+
+/* Term Meta Fields */
+.rationalseo-term-field .description {
+	margin-top: 6px;
+	color: #646970;
+	font-size: 13px;
+}
+
+.rationalseo-term-advanced {
+	margin-top: 16px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.rationalseo-term-advanced summary {
+	padding: 12px 16px;
+	font-weight: 600;
+	cursor: pointer;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.rationalseo-term-advanced[open] summary {
+	border-bottom: 1px solid #c3c4c7;
+	border-radius: 4px 4px 0 0;
+}
+
+.rationalseo-term-advanced summary:hover {
+	background: #f0f0f1;
+}
+
+.rationalseo-term-advanced-content {
+	padding: 16px;
+}
+
+.rationalseo-term-advanced-content .rationalseo-term-field {
+	margin-bottom: 16px;
+}
+
+.rationalseo-term-advanced-content .rationalseo-term-field:last-child {
+	margin-bottom: 0;
+}
+
+.rationalseo-term-advanced-content .rationalseo-term-field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.rationalseo-term-checkbox-field label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: normal !important;
+}
+
+.rationalseo-term-advanced-content .rationalseo-term-field input[type="url"] {
+	width: 100%;
+}
+
+/* Add New Term Form Styles */
+.form-field.rationalseo-term-field .rationalseo-term-advanced {
+	margin-top: 8px;
+}
