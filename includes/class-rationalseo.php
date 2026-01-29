@@ -75,6 +75,13 @@ class RationalSEO {
 	private $import_admin;
 
 	/**
+	 * Term meta instance.
+	 *
+	 * @var RationalSEO_Term_Meta
+	 */
+	private $term_meta;
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return RationalSEO
@@ -99,6 +106,7 @@ class RationalSEO {
 		if ( is_admin() ) {
 			$this->admin        = new RationalSEO_Admin( $this->settings, $this->redirects, $this->import_manager );
 			$this->meta_box     = new RationalSEO_Meta_Box( $this->settings );
+			$this->term_meta    = new RationalSEO_Term_Meta( $this->settings );
 			$this->import_admin = new RationalSEO_Import_Admin( $this->import_manager );
 		}
 	}
@@ -173,5 +181,14 @@ class RationalSEO {
 	 */
 	public function get_import_admin() {
 		return $this->import_admin;
+	}
+
+	/**
+	 * Get term meta instance.
+	 *
+	 * @return RationalSEO_Term_Meta|null
+	 */
+	public function get_term_meta() {
+		return $this->term_meta;
 	}
 }

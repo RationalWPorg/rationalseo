@@ -118,18 +118,19 @@ See **RationalCleanup** for the canonical implementation: Clean singleton patter
 
 ## Frontend Title Defaults
 
-Titles are managed per-page via post meta (`_rationalseo_title`, `_rationalseo_desc`), with these fallbacks:
+Titles are managed per-page via post meta (`_rationalseo_title`, `_rationalseo_desc`) and per-term via term meta, with these fallbacks:
 
 | Context | Title Default | Description Default |
 |---------|--------------|-------------------|
 | Front page | `{site name} {sep} {site description}` | Site tagline |
 | Blog page | `Blog {sep} {site name}` | Site tagline |
 | Singular | `{post title} {sep} {site name}` | Excerpt or auto-generated from content |
-| Archive | `{term/type name} {sep} {site name}` | Term description |
+| Taxonomy archive | `{term name} {sep} {site name}` | Term description |
+| Post type archive | `{post type name} {sep} {site name}` | — |
 | Search | `Search Results for "query" {sep} {site name}` | — |
 | 404 | `Page Not Found {sep} {site name}` | — |
 
-**Important:** Front page and blog page check `page_on_front` and `page_for_posts` post meta before falling back. There are no homepage settings in the admin — title/description are set on the page itself.
+**Important:** Front page and blog page check `page_on_front` and `page_for_posts` post meta before falling back. Taxonomy archives check term meta before falling back. There are no homepage settings in the admin — title/description are set on the page itself.
 
 ## Settings Defaults Behavior
 
@@ -191,3 +192,23 @@ All SEO importers handle: post meta, redirects, and settings. All use batch proc
 | `_rationalseo_og_image` | Custom social image URL |
 
 See each importer class for source plugin key mappings and variable conversion details.
+
+## Term Meta System
+
+SEO fields are available on all public taxonomy term edit screens (Categories, Tags, custom taxonomies).
+
+### Term Meta Keys
+
+| Key | Purpose |
+|-----|---------|
+| `_rationalseo_term_title` | Custom SEO title for term archive |
+| `_rationalseo_term_desc` | Custom meta description |
+| `_rationalseo_term_canonical` | Custom canonical URL |
+| `_rationalseo_term_noindex` | Noindex flag (stores `'1'`) |
+| `_rationalseo_term_og_image` | Custom social image URL |
+
+### Implementation Details
+
+- **Class:** `RationalSEO_Term_Meta` (`includes/class-term-meta.php`)
+- **Hooks:** `{$taxonomy}_edit_form_fields`, `{$taxonomy}_add_form_fields`, `edited_{$taxonomy}`, `created_{$taxonomy}`
+- **Frontend:** `class-frontend.php` checks term meta before falling back to defaults in `get_title()`, `get_description()`, `get_robots()`, `get_canonical()`, and `get_social_image()`
