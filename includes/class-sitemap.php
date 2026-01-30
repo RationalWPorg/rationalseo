@@ -169,15 +169,9 @@ class RationalSEO_Sitemap {
 			'orderby'        => 'modified',
 			'order'          => 'DESC',
 			'meta_query'     => array(
-				'relation' => 'OR',
 				array(
 					'key'     => '_rationalseo_noindex',
 					'compare' => 'NOT EXISTS',
-				),
-				array(
-					'key'     => '_rationalseo_noindex',
-					'value'   => '1',
-					'compare' => '!=',
 				),
 			),
 		);
@@ -206,18 +200,12 @@ class RationalSEO_Sitemap {
 		$args = array(
 			'post_type'      => $post_type,
 			'post_status'    => 'publish',
-			'posts_per_page' => -1,
+			'posts_per_page' => 1,
 			'fields'         => 'ids',
 			'meta_query'     => array(
-				'relation' => 'OR',
 				array(
 					'key'     => '_rationalseo_noindex',
 					'compare' => 'NOT EXISTS',
-				),
-				array(
-					'key'     => '_rationalseo_noindex',
-					'value'   => '1',
-					'compare' => '!=',
 				),
 			),
 		);
@@ -233,8 +221,8 @@ class RationalSEO_Sitemap {
 			);
 		}
 
-		$posts = get_posts( $args );
-		$total = count( $posts );
+		$query = new WP_Query( $args );
+		$total = $query->found_posts;
 
 		return (int) ceil( $total / self::URLS_PER_PAGE );
 	}
