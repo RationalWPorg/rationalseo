@@ -54,13 +54,6 @@ class RationalSEO {
 	private $sitemap;
 
 	/**
-	 * Redirects instance.
-	 *
-	 * @var RationalSEO_Redirects
-	 */
-	private $redirects;
-
-	/**
 	 * Import manager instance.
 	 *
 	 * @var RationalSEO_Import_Manager
@@ -100,11 +93,10 @@ class RationalSEO {
 		$this->settings       = new RationalSEO_Settings();
 		$this->frontend       = new RationalSEO_Frontend( $this->settings );
 		$this->sitemap        = new RationalSEO_Sitemap( $this->settings );
-		$this->redirects      = new RationalSEO_Redirects( $this->settings );
 		$this->import_manager = new RationalSEO_Import_Manager( $this->settings );
 
 		if ( is_admin() ) {
-			$this->admin        = new RationalSEO_Admin( $this->settings, $this->redirects, $this->import_manager );
+			$this->admin        = new RationalSEO_Admin( $this->settings, $this->import_manager );
 			$this->meta_box     = new RationalSEO_Meta_Box( $this->settings );
 			$this->term_meta    = new RationalSEO_Term_Meta( $this->settings );
 			$this->import_admin = new RationalSEO_Import_Admin( $this->import_manager );
@@ -154,15 +146,6 @@ class RationalSEO {
 	 */
 	public function get_sitemap() {
 		return $this->sitemap;
-	}
-
-	/**
-	 * Get redirects instance.
-	 *
-	 * @return RationalSEO_Redirects
-	 */
-	public function get_redirects() {
-		return $this->redirects;
 	}
 
 	/**

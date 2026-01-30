@@ -21,13 +21,6 @@ class RationalSEO_Admin {
 	private $settings;
 
 	/**
-	 * Redirects instance.
-	 *
-	 * @var RationalSEO_Redirects
-	 */
-	private $redirects;
-
-	/**
 	 * Import manager instance.
 	 *
 	 * @var RationalSEO_Import_Manager
@@ -38,12 +31,10 @@ class RationalSEO_Admin {
 	 * Constructor.
 	 *
 	 * @param RationalSEO_Settings       $settings       Settings instance.
-	 * @param RationalSEO_Redirects      $redirects      Redirects instance.
 	 * @param RationalSEO_Import_Manager $import_manager Import manager instance.
 	 */
-	public function __construct( RationalSEO_Settings $settings, RationalSEO_Redirects $redirects = null, RationalSEO_Import_Manager $import_manager = null ) {
+	public function __construct( RationalSEO_Settings $settings, RationalSEO_Import_Manager $import_manager = null ) {
 		$this->settings       = $settings;
-		$this->redirects      = $redirects;
 		$this->import_manager = $import_manager;
 		$this->init_hooks();
 	}
@@ -200,22 +191,6 @@ class RationalSEO_Admin {
 			'rationalseo_sitemaps',
 			'rationalseo_sitemap_section'
 		);
-
-		// Redirects Section.
-		add_settings_section(
-			'rationalseo_redirects_section',
-			__( 'Redirect Settings', 'rationalseo' ),
-			array( $this, 'render_section_redirects' ),
-			'rationalseo_redirects'
-		);
-
-		add_settings_field(
-			'redirect_auto_slug',
-			__( 'Auto-Redirect on Slug Change', 'rationalseo' ),
-			array( $this, 'render_field_redirect_auto_slug' ),
-			'rationalseo_redirects',
-			'rationalseo_redirects_section'
-		);
 	}
 
 	/**
@@ -270,8 +245,6 @@ class RationalSEO_Admin {
 			$sanitized['sitemap_exclude_types'] = array_map( 'sanitize_key', $input['sitemap_exclude_types'] );
 		}
 
-		$sanitized['redirect_auto_slug'] = isset( $input['redirect_auto_slug'] ) && '1' === $input['redirect_auto_slug'];
-
 		// Flush rewrite rules if sitemap settings changed.
 		$old_settings = get_option( RationalSEO_Settings::OPTION_NAME, array() );
 		$sitemap_changed = (
@@ -325,11 +298,10 @@ class RationalSEO_Admin {
 
 		$current_tab = $this->get_current_tab();
 		$tabs        = array(
-			'general'   => __( 'General', 'rationalseo' ),
-			'social'    => __( 'Social', 'rationalseo' ),
-			'sitemaps'  => __( 'Sitemaps', 'rationalseo' ),
-			'redirects' => __( 'Redirects', 'rationalseo' ),
-			'import'    => __( 'Import', 'rationalseo' ),
+			'general'  => __( 'General', 'rationalseo' ),
+			'social'   => __( 'Social', 'rationalseo' ),
+			'sitemaps' => __( 'Sitemaps', 'rationalseo' ),
+			'import'   => __( 'Import', 'rationalseo' ),
 		);
 		?>
 		<div class="wrap rationalseo-settings">
@@ -353,16 +325,6 @@ class RationalSEO_Admin {
 
 			<?php if ( 'import' === $current_tab ) : ?>
 				<?php $this->render_import_tab(); ?>
-			<?php elseif ( 'redirects' === $current_tab ) : ?>
-				<form action="options.php" method="post">
-					<?php
-					settings_fields( 'rationalseo_settings_group' );
-					do_settings_sections( 'rationalseo_redirects' );
-					submit_button( __( 'Save Settings', 'rationalseo' ) );
-					?>
-				</form>
-
-				<?php $this->render_redirect_manager(); ?>
 			<?php else : ?>
 				<form action="options.php" method="post">
 					<?php
@@ -682,31 +644,6 @@ class RationalSEO_Admin {
 	}
 
 	/**
-	 * Render Redirects section description.
-	 */
-	public function render_section_redirects() {
-		echo '<p>' . esc_html__( 'Configure URL redirect settings.', 'rationalseo' ) . '</p>';
-	}
-
-	/**
-	 * Render Auto Slug Redirect field.
-	 */
-	public function render_field_redirect_auto_slug() {
-		$value = $this->settings->get( 'redirect_auto_slug', true );
-		?>
-		<label>
-			<input type="checkbox"
-				name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[redirect_auto_slug]"
-				id="redirect_auto_slug"
-				value="1"
-				<?php checked( $value, true ); ?>>
-			<?php esc_html_e( 'Automatically create redirects when post slugs change', 'rationalseo' ); ?>
-		</label>
-		<p class="description"><?php esc_html_e( 'When enabled, changing a published post\'s URL slug will automatically create a 301 redirect from the old URL to the new one.', 'rationalseo' ); ?></p>
-		<?php
-	}
-
-	/**
 	 * Render the import tab content.
 	 */
 	private function render_import_tab() {
@@ -717,490 +654,5 @@ class RationalSEO_Admin {
 		} else {
 			echo '<p>' . esc_html__( 'Import system not available.', 'rationalseo' ) . '</p>';
 		}
-	}
-
-	/**
-	 * Render the redirect manager interface.
-	 */
-	private function render_redirect_manager() {
-		if ( ! $this->redirects ) {
-			return;
-		}
-
-		$redirects = $this->redirects->get_all_redirects();
-		$nonce     = wp_create_nonce( 'rationalseo_redirects' );
-		?>
-		<div class="rationalseo-redirect-header">
-			<h2><?php esc_html_e( 'Redirect Manager', 'rationalseo' ); ?></h2>
-			<button type="button" class="button button-secondary" id="rationalseo-import-yoast-btn">
-				<?php esc_html_e( 'Import from Yoast', 'rationalseo' ); ?>
-			</button>
-		</div>
-
-		<div class="rationalseo-redirect-manager">
-			<table class="wp-list-table widefat fixed striped rationalseo-redirects-table">
-				<thead>
-					<tr>
-						<th class="column-from"><?php esc_html_e( 'From URL', 'rationalseo' ); ?></th>
-						<th class="column-to"><?php esc_html_e( 'To URL', 'rationalseo' ); ?></th>
-						<th class="column-status"><?php esc_html_e( 'Type', 'rationalseo' ); ?></th>
-						<th class="column-regex"><?php esc_html_e( 'Regex', 'rationalseo' ); ?></th>
-						<th class="column-hits"><?php esc_html_e( 'Hits', 'rationalseo' ); ?></th>
-						<th class="column-actions"><?php esc_html_e( 'Actions', 'rationalseo' ); ?></th>
-					</tr>
-				</thead>
-				<tbody id="rationalseo-redirects-list">
-					<tr class="rationalseo-add-row">
-						<td>
-							<input type="text" id="rationalseo-new-from" placeholder="/old-url/" class="regular-text">
-						</td>
-						<td>
-							<input type="url" id="rationalseo-new-to" placeholder="<?php echo esc_attr( home_url( '/new-url/' ) ); ?>" class="regular-text">
-						</td>
-						<td>
-							<select id="rationalseo-new-status">
-								<option value="301"><?php esc_html_e( '301 Permanent', 'rationalseo' ); ?></option>
-								<option value="302"><?php esc_html_e( '302 Temporary', 'rationalseo' ); ?></option>
-								<option value="307"><?php esc_html_e( '307 Temporary', 'rationalseo' ); ?></option>
-								<option value="410"><?php esc_html_e( '410 Gone', 'rationalseo' ); ?></option>
-							</select>
-						</td>
-						<td class="column-regex">
-							<input type="checkbox" id="rationalseo-new-regex" value="1">
-						</td>
-						<td class="column-hits">&mdash;</td>
-						<td>
-							<button type="button" class="button button-primary" id="rationalseo-add-redirect">
-								<?php esc_html_e( 'Add', 'rationalseo' ); ?>
-							</button>
-						</td>
-					</tr>
-					<?php if ( empty( $redirects ) ) : ?>
-						<tr class="no-redirects">
-							<td colspan="6"><?php esc_html_e( 'No redirects found. Add one above.', 'rationalseo' ); ?></td>
-						</tr>
-					<?php else : ?>
-						<?php foreach ( $redirects as $redirect ) : ?>
-							<?php $is_regex = isset( $redirect->is_regex ) && (int) $redirect->is_regex === 1; ?>
-							<tr data-id="<?php echo esc_attr( $redirect->id ); ?>">
-								<td class="column-from"><code><?php echo esc_html( $redirect->url_from ); ?></code></td>
-								<td class="column-to">
-									<?php if ( 410 === (int) $redirect->status_code ) : ?>
-										<em><?php esc_html_e( '(Gone)', 'rationalseo' ); ?></em>
-									<?php else : ?>
-										<a href="<?php echo esc_url( $redirect->url_to ); ?>" target="_blank" rel="noopener">
-											<?php echo esc_html( $redirect->url_to ); ?>
-										</a>
-									<?php endif; ?>
-								</td>
-								<td class="column-status"><?php echo esc_html( $redirect->status_code ); ?></td>
-								<td class="column-regex">
-									<?php if ( $is_regex ) : ?>
-										<span class="rationalseo-regex-badge"><?php esc_html_e( 'Yes', 'rationalseo' ); ?></span>
-									<?php else : ?>
-										&mdash;
-									<?php endif; ?>
-								</td>
-								<td class="column-hits"><?php echo esc_html( number_format_i18n( $redirect->count ) ); ?></td>
-								<td class="column-actions">
-									<button type="button" class="button button-link-delete rationalseo-delete-redirect" data-id="<?php echo esc_attr( $redirect->id ); ?>">
-										<?php esc_html_e( 'Delete', 'rationalseo' ); ?>
-									</button>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					<?php endif; ?>
-				</tbody>
-			</table>
-
-			<div id="rationalseo-redirect-message" class="notice" style="display: none;"></div>
-		</div>
-
-		<!-- Yoast Import Modal -->
-		<div id="rationalseo-import-modal" class="rationalseo-modal" style="display: none;">
-			<div class="rationalseo-modal-content">
-				<div class="rationalseo-modal-header">
-					<h3><?php esc_html_e( 'Import Redirects from Yoast SEO Premium', 'rationalseo' ); ?></h3>
-					<button type="button" class="rationalseo-modal-close">&times;</button>
-				</div>
-				<div class="rationalseo-modal-body">
-					<div id="rationalseo-import-loading">
-						<span class="spinner is-active"></span>
-						<?php esc_html_e( 'Scanning for Yoast redirects...', 'rationalseo' ); ?>
-					</div>
-					<div id="rationalseo-import-preview" style="display: none;">
-						<p id="rationalseo-import-summary"></p>
-						<div id="rationalseo-import-details">
-							<h4><?php esc_html_e( 'Redirects to Import', 'rationalseo' ); ?></h4>
-							<div class="rationalseo-import-table-wrap">
-								<table class="widefat striped">
-									<thead>
-										<tr>
-											<th><?php esc_html_e( 'From', 'rationalseo' ); ?></th>
-											<th><?php esc_html_e( 'To', 'rationalseo' ); ?></th>
-											<th><?php esc_html_e( 'Type', 'rationalseo' ); ?></th>
-											<th><?php esc_html_e( 'Regex', 'rationalseo' ); ?></th>
-										</tr>
-									</thead>
-									<tbody id="rationalseo-import-list"></tbody>
-								</table>
-							</div>
-						</div>
-						<div id="rationalseo-import-duplicates" style="display: none;">
-							<h4><?php esc_html_e( 'Duplicates (will be skipped)', 'rationalseo' ); ?></h4>
-							<div class="rationalseo-import-table-wrap">
-								<table class="widefat striped">
-									<thead>
-										<tr>
-											<th><?php esc_html_e( 'From', 'rationalseo' ); ?></th>
-											<th><?php esc_html_e( 'To', 'rationalseo' ); ?></th>
-											<th><?php esc_html_e( 'Type', 'rationalseo' ); ?></th>
-											<th><?php esc_html_e( 'Regex', 'rationalseo' ); ?></th>
-										</tr>
-									</thead>
-									<tbody id="rationalseo-duplicates-list"></tbody>
-								</table>
-							</div>
-						</div>
-					</div>
-					<div id="rationalseo-import-error" style="display: none;">
-						<p></p>
-					</div>
-					<div id="rationalseo-import-result" style="display: none;">
-						<p id="rationalseo-import-result-message"></p>
-					</div>
-				</div>
-				<div class="rationalseo-modal-footer">
-					<button type="button" class="button" id="rationalseo-import-cancel">
-						<?php esc_html_e( 'Cancel', 'rationalseo' ); ?>
-					</button>
-					<button type="button" class="button button-primary" id="rationalseo-import-confirm" style="display: none;">
-						<?php esc_html_e( 'Import Redirects', 'rationalseo' ); ?>
-					</button>
-					<button type="button" class="button button-primary" id="rationalseo-import-done" style="display: none;">
-						<?php esc_html_e( 'Done', 'rationalseo' ); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-
-		<script type="text/javascript">
-		(function($) {
-			var nonce = '<?php echo esc_js( $nonce ); ?>';
-			var homeUrl = '<?php echo esc_js( home_url() ); ?>';
-
-			// Add redirect.
-			$('#rationalseo-add-redirect').on('click', function() {
-				var $btn = $(this);
-				var urlFrom = $('#rationalseo-new-from').val().trim();
-				var urlTo = $('#rationalseo-new-to').val().trim();
-				var statusCode = $('#rationalseo-new-status').val();
-				var isRegex = $('#rationalseo-new-regex').is(':checked') ? '1' : '0';
-
-				if (!urlFrom) {
-					showMessage('<?php echo esc_js( __( 'Please enter a source URL.', 'rationalseo' ) ); ?>', 'error');
-					return;
-				}
-
-				if (statusCode !== '410' && !urlTo) {
-					showMessage('<?php echo esc_js( __( 'Please enter a destination URL.', 'rationalseo' ) ); ?>', 'error');
-					return;
-				}
-
-				$btn.prop('disabled', true);
-
-				$.post(ajaxurl, {
-					action: 'rationalseo_add_redirect',
-					nonce: nonce,
-					url_from: urlFrom,
-					url_to: urlTo,
-					status_code: statusCode,
-					is_regex: isRegex
-				}, function(response) {
-					$btn.prop('disabled', false);
-
-					if (response.success) {
-						var redirect = response.data.redirect;
-						var toDisplay = statusCode === '410'
-							? '<em><?php echo esc_js( __( '(Gone)', 'rationalseo' ) ); ?></em>'
-							: '<a href="' + redirect.url_to + '" target="_blank" rel="noopener">' + redirect.url_to + '</a>';
-						var regexDisplay = redirect.is_regex == 1
-							? '<span class="rationalseo-regex-badge"><?php echo esc_js( __( 'Yes', 'rationalseo' ) ); ?></span>'
-							: '&mdash;';
-
-						var newRow = '<tr data-id="' + redirect.id + '">' +
-							'<td class="column-from"><code>' + redirect.url_from + '</code></td>' +
-							'<td class="column-to">' + toDisplay + '</td>' +
-							'<td class="column-status">' + redirect.status_code + '</td>' +
-							'<td class="column-regex">' + regexDisplay + '</td>' +
-							'<td class="column-hits">0</td>' +
-							'<td class="column-actions">' +
-								'<button type="button" class="button button-link-delete rationalseo-delete-redirect" data-id="' + redirect.id + '">' +
-									'<?php echo esc_js( __( 'Delete', 'rationalseo' ) ); ?>' +
-								'</button>' +
-							'</td>' +
-						'</tr>';
-
-						$('.rationalseo-add-row').after(newRow);
-						$('.no-redirects').remove();
-
-						// Clear inputs.
-						$('#rationalseo-new-from').val('');
-						$('#rationalseo-new-to').val('');
-						$('#rationalseo-new-status').val('301');
-						$('#rationalseo-new-regex').prop('checked', false);
-
-						showMessage(response.data.message, 'success');
-					} else {
-						showMessage(response.data.message, 'error');
-					}
-				}).fail(function() {
-					$btn.prop('disabled', false);
-					showMessage('<?php echo esc_js( __( 'An error occurred. Please try again.', 'rationalseo' ) ); ?>', 'error');
-				});
-			});
-
-			// Delete redirect.
-			$(document).on('click', '.rationalseo-delete-redirect', function() {
-				var $btn = $(this);
-				var id = $btn.data('id');
-
-				if (!confirm('<?php echo esc_js( __( 'Are you sure you want to delete this redirect?', 'rationalseo' ) ); ?>')) {
-					return;
-				}
-
-				$btn.prop('disabled', true);
-
-				$.post(ajaxurl, {
-					action: 'rationalseo_delete_redirect',
-					nonce: nonce,
-					id: id
-				}, function(response) {
-					if (response.success) {
-						$btn.closest('tr').fadeOut(300, function() {
-							$(this).remove();
-							if ($('#rationalseo-redirects-list tr').length === 1) {
-								$('.rationalseo-add-row').after(
-									'<tr class="no-redirects"><td colspan="6"><?php echo esc_js( __( 'No redirects found. Add one above.', 'rationalseo' ) ); ?></td></tr>'
-								);
-							}
-						});
-						showMessage(response.data.message, 'success');
-					} else {
-						$btn.prop('disabled', false);
-						showMessage(response.data.message, 'error');
-					}
-				}).fail(function() {
-					$btn.prop('disabled', false);
-					showMessage('<?php echo esc_js( __( 'An error occurred. Please try again.', 'rationalseo' ) ); ?>', 'error');
-				});
-			});
-
-			function showMessage(message, type) {
-				var $msg = $('#rationalseo-redirect-message');
-				$msg.removeClass('notice-success notice-error')
-					.addClass('notice-' + type)
-					.html('<p>' + message + '</p>')
-					.fadeIn();
-
-				setTimeout(function() {
-					$msg.fadeOut();
-				}, 4000);
-			}
-
-			// Yoast Import Modal functionality.
-			var $modal = $('#rationalseo-import-modal');
-			var importData = null;
-
-			// Open modal and preview.
-			$('#rationalseo-import-yoast-btn').on('click', function() {
-				openImportModal();
-			});
-
-			// Close modal handlers.
-			$('.rationalseo-modal-close, #rationalseo-import-cancel, #rationalseo-import-done').on('click', function() {
-				closeImportModal();
-			});
-
-			// Close on backdrop click.
-			$modal.on('click', function(e) {
-				if ($(e.target).is($modal)) {
-					closeImportModal();
-				}
-			});
-
-			// Confirm import.
-			$('#rationalseo-import-confirm').on('click', function() {
-				performImport();
-			});
-
-			function openImportModal() {
-				// Reset modal state.
-				$('#rationalseo-import-loading').show();
-				$('#rationalseo-import-preview').hide();
-				$('#rationalseo-import-error').removeClass('notice notice-error').hide();
-				$('#rationalseo-import-result').removeClass('notice notice-success').hide();
-				$('#rationalseo-import-confirm').hide().prop('disabled', false).text('<?php echo esc_js( __( 'Import Redirects', 'rationalseo' ) ); ?>');
-				$('#rationalseo-import-done').hide();
-				$('#rationalseo-import-cancel').show();
-				$('#rationalseo-import-list').empty();
-				$('#rationalseo-duplicates-list').empty();
-				importData = null;
-
-				$modal.css('display', 'flex');
-
-				// Fetch preview data.
-				$.post(ajaxurl, {
-					action: 'rationalseo_preview_yoast_import',
-					nonce: nonce
-				}, function(response) {
-					$('#rationalseo-import-loading').hide();
-
-					if (response.success) {
-						importData = response.data;
-						showPreview(response.data);
-					} else {
-						showImportError(response.data.message);
-					}
-				}).fail(function() {
-					$('#rationalseo-import-loading').hide();
-					showImportError('<?php echo esc_js( __( 'Failed to connect to server. Please try again.', 'rationalseo' ) ); ?>');
-				});
-			}
-
-			function closeImportModal() {
-				$modal.hide();
-			}
-
-			function showPreview(data) {
-				$('#rationalseo-import-summary').text(data.message);
-
-				// Populate redirects to import.
-				var $importList = $('#rationalseo-import-list');
-				if (data.to_import.length > 0) {
-					data.to_import.forEach(function(redirect) {
-						var toDisplay = redirect.status_code == 410
-							? '<em><?php echo esc_js( __( '(Gone)', 'rationalseo' ) ); ?></em>'
-							: escapeHtml(redirect.url_to);
-						var regexDisplay = redirect.is_regex
-							? '<span class="rationalseo-regex-badge"><?php echo esc_js( __( 'Yes', 'rationalseo' ) ); ?></span>'
-							: '&mdash;';
-						$importList.append(
-							'<tr>' +
-								'<td><code>' + escapeHtml(redirect.url_from) + '</code></td>' +
-								'<td>' + toDisplay + '</td>' +
-								'<td>' + redirect.status_code + '</td>' +
-								'<td>' + regexDisplay + '</td>' +
-							'</tr>'
-						);
-					});
-					$('#rationalseo-import-details').show();
-					$('#rationalseo-import-confirm').show();
-				} else {
-					$('#rationalseo-import-details').hide();
-				}
-
-				// Populate duplicates.
-				var $duplicatesList = $('#rationalseo-duplicates-list');
-				if (data.duplicates.length > 0) {
-					data.duplicates.forEach(function(redirect) {
-						var toDisplay = redirect.status_code == 410
-							? '<em><?php echo esc_js( __( '(Gone)', 'rationalseo' ) ); ?></em>'
-							: escapeHtml(redirect.url_to);
-						var regexDisplay = redirect.is_regex
-							? '<span class="rationalseo-regex-badge"><?php echo esc_js( __( 'Yes', 'rationalseo' ) ); ?></span>'
-							: '&mdash;';
-						$duplicatesList.append(
-							'<tr>' +
-								'<td><code>' + escapeHtml(redirect.url_from) + '</code></td>' +
-								'<td>' + toDisplay + '</td>' +
-								'<td>' + redirect.status_code + '</td>' +
-								'<td>' + regexDisplay + '</td>' +
-							'</tr>'
-						);
-					});
-					$('#rationalseo-import-duplicates').show();
-				} else {
-					$('#rationalseo-import-duplicates').hide();
-				}
-
-				$('#rationalseo-import-preview').show();
-
-				// If nothing to import, show done button instead.
-				if (data.to_import.length === 0) {
-					$('#rationalseo-import-confirm').hide();
-					$('#rationalseo-import-done').show();
-					$('#rationalseo-import-cancel').hide();
-				}
-			}
-
-			function showImportError(message) {
-				$('#rationalseo-import-error').addClass('notice notice-error').show().find('p').text(message);
-				$('#rationalseo-import-done').show();
-				$('#rationalseo-import-cancel').hide();
-			}
-
-			function performImport() {
-				$('#rationalseo-import-confirm').prop('disabled', true).text('<?php echo esc_js( __( 'Importing...', 'rationalseo' ) ); ?>');
-
-				$.post(ajaxurl, {
-					action: 'rationalseo_import_yoast_redirects',
-					nonce: nonce
-				}, function(response) {
-					$('#rationalseo-import-preview').hide();
-					$('#rationalseo-import-confirm').hide();
-					$('#rationalseo-import-cancel').hide();
-
-					if (response.success) {
-						$('#rationalseo-import-result').addClass('notice notice-success').show();
-						$('#rationalseo-import-result-message').text(response.data.message);
-						$('#rationalseo-import-done').show();
-
-						// Add imported redirects to the table.
-						if (response.data.redirects && response.data.redirects.length > 0) {
-							$('.no-redirects').remove();
-							response.data.redirects.forEach(function(redirect) {
-								var toDisplay = redirect.status_code == 410
-									? '<em><?php echo esc_js( __( '(Gone)', 'rationalseo' ) ); ?></em>'
-									: '<a href="' + redirect.url_to + '" target="_blank" rel="noopener">' + redirect.url_to + '</a>';
-								var regexDisplay = redirect.is_regex == 1
-									? '<span class="rationalseo-regex-badge"><?php echo esc_js( __( 'Yes', 'rationalseo' ) ); ?></span>'
-									: '&mdash;';
-
-								var newRow = '<tr data-id="' + redirect.id + '">' +
-									'<td class="column-from"><code>' + redirect.url_from + '</code></td>' +
-									'<td class="column-to">' + toDisplay + '</td>' +
-									'<td class="column-status">' + redirect.status_code + '</td>' +
-									'<td class="column-regex">' + regexDisplay + '</td>' +
-									'<td class="column-hits">0</td>' +
-									'<td class="column-actions">' +
-										'<button type="button" class="button button-link-delete rationalseo-delete-redirect" data-id="' + redirect.id + '">' +
-											'<?php echo esc_js( __( 'Delete', 'rationalseo' ) ); ?>' +
-										'</button>' +
-									'</td>' +
-								'</tr>';
-
-								$('.rationalseo-add-row').after(newRow);
-							});
-						}
-					} else {
-						showImportError(response.data.message);
-					}
-				}).fail(function() {
-					$('#rationalseo-import-preview').hide();
-					$('#rationalseo-import-confirm').hide();
-					showImportError('<?php echo esc_js( __( 'Failed to import. Please try again.', 'rationalseo' ) ); ?>');
-				});
-			}
-
-			function escapeHtml(text) {
-				if (!text) return '';
-				var div = document.createElement('div');
-				div.appendChild(document.createTextNode(text));
-				return div.innerHTML;
-			}
-		})(jQuery);
-		</script>
-		<?php
 	}
 }
