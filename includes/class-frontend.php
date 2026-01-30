@@ -210,7 +210,12 @@ class RationalSEO_Frontend {
 					return $this->cached_title;
 				}
 			}
-			$this->cached_title = sprintf( '%s %s %s', $site_name, $separator, get_bloginfo( 'description' ) );
+			$tagline = get_bloginfo( 'description' );
+			if ( ! empty( $tagline ) ) {
+				$this->cached_title = sprintf( '%s %s %s', $site_name, $separator, $tagline );
+			} else {
+				$this->cached_title = $site_name;
+			}
 			return $this->cached_title;
 		}
 
