@@ -72,7 +72,7 @@ array(
 
 ## Import System
 
-Plugin-agnostic framework for migrating from Yoast, Rank Math, AIOSEO, SEOPress, and Redirection.
+Plugin-agnostic framework for migrating SEO data from Yoast, Rank Math, AIOSEO, and SEOPress.
 
 **Registration:**
 ```php
@@ -91,8 +91,6 @@ add_action( 'rationalseo_register_importers', function( $manager ) {
 | SEOPress | `%%var%%` | Noindex stored as `'yes'` string |
 
 All importers: batch process 100 posts, support `skip_existing`, write home title/desc to front page post meta.
-
-**Note:** Redirect import functionality is being migrated to the separate RationalRedirects plugin. The import system still contains redirect-related code that will be cleaned up in Phase 4.
 
 ## Build
 

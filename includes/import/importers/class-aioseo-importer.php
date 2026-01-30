@@ -290,7 +290,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 	 * @return string
 	 */
 	public function get_description() {
-		return __( 'Import SEO titles, meta descriptions, redirects, and settings from All in One SEO (AIOSEO).', 'rationalseo' );
+		return __( 'Import SEO titles, meta descriptions, and settings from All in One SEO (AIOSEO).', 'rationalseo' );
 	}
 
 	/**
@@ -301,11 +301,6 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 	public function is_available() {
 		// Check for AIOSEO posts table.
 		if ( $this->get_post_meta_count() > 0 ) {
-			return true;
-		}
-
-		// Check for AIOSEO redirects.
-		if ( $this->get_redirects_count() > 0 ) {
 			return true;
 		}
 
@@ -325,7 +320,6 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 	 */
 	public function get_importable_items() {
 		$post_meta_count = $this->get_post_meta_count();
-		$redirects_count = $this->get_redirects_count();
 		$settings_count  = $this->get_settings_count();
 
 		return array(
@@ -333,11 +327,6 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 				'label'     => __( 'Post SEO Data', 'rationalseo' ),
 				'count'     => $post_meta_count,
 				'available' => $post_meta_count > 0,
-			),
-			'redirects' => array(
-				'label'     => __( 'Redirects', 'rationalseo' ),
-				'count'     => $redirects_count,
-				'available' => $redirects_count > 0,
 			),
 			'settings'  => array(
 				'label'     => __( 'Settings', 'rationalseo' ),
@@ -359,15 +348,11 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 
 		// If no specific types requested, preview all available.
 		if ( empty( $item_types ) ) {
-			$item_types = array( 'post_meta', 'redirects', 'settings' );
+			$item_types = array( 'post_meta', 'settings' );
 		}
 
 		if ( in_array( 'post_meta', $item_types, true ) ) {
 			$preview_data['post_meta'] = $this->preview_post_meta();
-		}
-
-		if ( in_array( 'redirects', $item_types, true ) ) {
-			$preview_data['redirects'] = $this->preview_redirects();
 		}
 
 		if ( in_array( 'settings', $item_types, true ) ) {
@@ -391,17 +376,13 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 
 		// If no specific types requested, import all available.
 		if ( empty( $item_types ) ) {
-			$item_types = array( 'post_meta', 'redirects', 'settings' );
+			$item_types = array( 'post_meta', 'settings' );
 		}
 
 		$import_results = array();
 
 		if ( in_array( 'post_meta', $item_types, true ) ) {
 			$import_results['post_meta'] = $this->import_post_meta( $skip_existing );
-		}
-
-		if ( in_array( 'redirects', $item_types, true ) ) {
-			$import_results['redirects'] = $this->import_redirects( $skip_existing );
 		}
 
 		if ( in_array( 'settings', $item_types, true ) ) {
@@ -477,40 +458,6 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$count = $wpdb->get_var(
 			"SELECT COUNT(*) FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '')" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		);
-
-		return absint( $count );
-	}
-
-	/**
-	 * Get count of AIOSEO redirects.
-	 *
-	 * Redirects are a Pro feature and may not exist.
-	 *
-	 * @return int
-	 */
-	private function get_redirects_count() {
-		global $wpdb;
-
-		$table_name = $wpdb->prefix . 'aioseo_redirects';
-
-		// Check if table exists.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$table_exists = $wpdb->get_var(
-			$wpdb->prepare(
-				'SHOW TABLES LIKE %s',
-				$table_name
-			)
-		);
-
-		if ( ! $table_exists ) {
-			return 0;
-		}
-
-		// Count enabled redirects.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
-		$count = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$table_name} WHERE enabled = 1" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
 
 		return absint( $count );
@@ -638,84 +585,6 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 	}
 
 	/**
-	 * Get AIOSEO redirects from database table.
-	 *
-	 * @return array Parsed redirects array.
-	 */
-	private function get_aioseo_redirects() {
-		global $wpdb;
-
-		$table_name = $wpdb->prefix . 'aioseo_redirects';
-
-		// Check if table exists.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$table_exists = $wpdb->get_var(
-			$wpdb->prepare(
-				'SHOW TABLES LIKE %s',
-				$table_name
-			)
-		);
-
-		if ( ! $table_exists ) {
-			return array();
-		}
-
-		// Get enabled redirects.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
-		$redirects_raw = $wpdb->get_results(
-			"SELECT source_url, target_url, type, regex FROM {$table_name} WHERE enabled = 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			ARRAY_A
-		);
-
-		if ( empty( $redirects_raw ) ) {
-			return array();
-		}
-
-		return $this->parse_aioseo_redirects( $redirects_raw );
-	}
-
-	/**
-	 * Parse AIOSEO redirect data into a normalized format.
-	 *
-	 * @param array $aioseo_redirects Raw AIOSEO redirects from database.
-	 * @return array Normalized redirects.
-	 */
-	private function parse_aioseo_redirects( $aioseo_redirects ) {
-		$parsed = array();
-
-		foreach ( $aioseo_redirects as $redirect ) {
-			$source_url  = isset( $redirect['source_url'] ) ? $redirect['source_url'] : '';
-			$target_url  = isset( $redirect['target_url'] ) ? $redirect['target_url'] : '';
-			$status_code = isset( $redirect['type'] ) ? absint( $redirect['type'] ) : 301;
-			$is_regex    = isset( $redirect['regex'] ) ? (bool) $redirect['regex'] : false;
-
-			if ( empty( $source_url ) ) {
-				continue;
-			}
-
-			// Validate status code (skip unsupported codes).
-			$valid_codes = array( 301, 302, 307, 410 );
-			if ( ! in_array( $status_code, $valid_codes, true ) ) {
-				$status_code = 301;
-			}
-
-			// For non-410, require a destination.
-			if ( 410 !== $status_code && empty( $target_url ) ) {
-				continue;
-			}
-
-			$parsed[] = array(
-				'url_from'    => sanitize_text_field( $source_url ),
-				'url_to'      => esc_url_raw( $target_url ),
-				'status_code' => $status_code,
-				'is_regex'    => $is_regex,
-			);
-		}
-
-		return $parsed;
-	}
-
-	/**
 	 * Preview post meta import.
 	 *
 	 * @return array Preview data.
@@ -798,23 +667,6 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		return array(
 			'total'   => $this->get_post_meta_count(),
 			'samples' => $preview,
-		);
-	}
-
-	/**
-	 * Preview redirects import.
-	 *
-	 * @return array Preview data.
-	 */
-	private function preview_redirects() {
-		$redirects = $this->get_aioseo_redirects();
-
-		// Return first 5 for preview.
-		$samples = array_slice( $redirects, 0, 5 );
-
-		return array(
-			'total'   => count( $redirects ),
-			'samples' => $samples,
 		);
 	}
 
@@ -1098,59 +950,6 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		return false;
-	}
-
-	/**
-	 * Import redirects from AIOSEO.
-	 *
-	 * @param bool $skip_existing Whether to skip redirects that already exist.
-	 * @return array Import results.
-	 */
-	private function import_redirects( $skip_existing = false ) {
-		$result = array(
-			'imported' => 0,
-			'skipped'  => 0,
-			'failed'   => 0,
-			'errors'   => array(),
-		);
-
-		$redirects = $this->get_aioseo_redirects();
-
-		if ( empty( $redirects ) ) {
-			return $result;
-		}
-
-		// Get the redirects instance.
-		$redirects_manager = RationalSEO::get_instance()->get_redirects();
-
-		foreach ( $redirects as $redirect ) {
-			// Check if redirect already exists.
-			if ( $skip_existing && $redirects_manager->redirect_exists( $redirect['url_from'], $redirect['is_regex'] ) ) {
-				$result['skipped']++;
-				continue;
-			}
-
-			// Add the redirect.
-			$insert_id = $redirects_manager->add_redirect(
-				$redirect['url_from'],
-				$redirect['url_to'],
-				$redirect['status_code'],
-				$redirect['is_regex']
-			);
-
-			if ( false !== $insert_id ) {
-				$result['imported']++;
-			} else {
-				$result['failed']++;
-				$result['errors'][] = sprintf(
-					/* translators: %s: source URL */
-					__( 'Failed to import redirect: %s', 'rationalseo' ),
-					$redirect['url_from']
-				);
-			}
-		}
-
-		return $result;
 	}
 
 	/**
