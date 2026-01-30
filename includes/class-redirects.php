@@ -21,6 +21,20 @@ class RationalSEO_Redirects {
 	const TABLE_NAME = 'rationalseo_redirects';
 
 	/**
+	 * Transient key for cached regex redirects.
+	 *
+	 * @var string
+	 */
+	const REGEX_CACHE_KEY = 'rationalseo_regex_redirects';
+
+	/**
+	 * Cache TTL for regex redirects in seconds (1 hour).
+	 *
+	 * @var int
+	 */
+	const REGEX_CACHE_TTL = 3600;
+
+	/**
 	 * Settings instance.
 	 *
 	 * @var RationalSEO_Settings
@@ -62,6 +76,43 @@ class RationalSEO_Redirects {
 	public static function get_table_name() {
 		global $wpdb;
 		return $wpdb->prefix . self::TABLE_NAME;
+	}
+
+	/**
+	 * Get regex redirects from cache or database.
+	 *
+	 * @return array Array of redirect objects.
+	 */
+	private function get_regex_redirects() {
+		$cached = get_transient( self::REGEX_CACHE_KEY );
+
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		global $wpdb;
+		$table_name = self::get_table_name();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
+		$regex_redirects = $wpdb->get_results(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT id, url_from, url_to, status_code FROM {$table_name} WHERE is_regex = 1"
+		);
+
+		if ( ! $regex_redirects ) {
+			$regex_redirects = array();
+		}
+
+		set_transient( self::REGEX_CACHE_KEY, $regex_redirects, self::REGEX_CACHE_TTL );
+
+		return $regex_redirects;
+	}
+
+	/**
+	 * Clear the regex redirects cache.
+	 */
+	private function clear_regex_cache() {
+		delete_transient( self::REGEX_CACHE_KEY );
 	}
 
 	/**
@@ -141,12 +192,8 @@ class RationalSEO_Redirects {
 		if ( $redirect ) {
 			$destination = $redirect->url_to;
 		} else {
-			// Second pass: check regex redirects.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
-			$regex_redirects = $wpdb->get_results(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT id, url_from, url_to, status_code FROM {$table_name} WHERE is_regex = 1"
-			);
+			// Second pass: check regex redirects (cached).
+			$regex_redirects = $this->get_regex_redirects();
 
 			if ( $regex_redirects ) {
 				foreach ( $regex_redirects as $regex_redirect ) {
@@ -321,6 +368,11 @@ class RationalSEO_Redirects {
 			return false;
 		}
 
+		// Clear regex cache if this was a regex redirect.
+		if ( $is_regex ) {
+			$this->clear_regex_cache();
+		}
+
 		return $wpdb->insert_id;
 	}
 
@@ -379,6 +431,9 @@ class RationalSEO_Redirects {
 			array( 'id' => $id ),
 			array( '%d' )
 		);
+
+		// Always clear regex cache since we don't track if deleted redirect was regex.
+		$this->clear_regex_cache();
 
 		return false !== $result;
 	}
