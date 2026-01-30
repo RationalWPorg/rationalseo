@@ -15,8 +15,7 @@ Lightweight WordPress SEO plugin. No bloat, no frontend assets, no content scori
 |-------|------|----------------|
 | `RationalSEO` | `rationalseo.php` | Singleton, hooks, option loading |
 | `RationalSEO_Frontend` | `class-frontend.php` | All `<head>` output (meta, OG, schema) |
-| `RationalSEO_Sitemaps` | `class-sitemaps.php` | XML sitemap generation |
-| `RationalSEO_Redirects` | `class-redirects.php` | Redirect matching and execution |
+| `RationalSEO_Sitemap` | `class-sitemap.php` | XML sitemap generation |
 | `RationalSEO_Settings` | `class-settings.php` | Admin UI, Settings API |
 | `RationalSEO_Meta_Box` | `class-meta-box.php` | Post editor SEO fields |
 | `RationalSEO_Term_Meta` | `class-term-meta.php` | Taxonomy term SEO fields |
@@ -37,16 +36,6 @@ Lightweight WordPress SEO plugin. No bloat, no frontend assets, no content scori
 
 **Term Meta Keys:** Same as post meta but prefixed `_rationalseo_term_*`
 
-**Redirects Table:** `{prefix}_rationalseo_redirects`
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | BIGINT | Primary key |
-| `url_from` | VARCHAR(255) | Source path (indexed) |
-| `url_to` | TEXT | Destination URL |
-| `status_code` | INT | 301, 302, 307, or 410 |
-| `is_regex` | TINYINT | 1 = regex pattern |
-| `count` | INT | Hit counter |
-
 ## Settings Defaults
 
 ```php
@@ -62,7 +51,6 @@ array(
     'sitemap_enabled'      => true,
     'sitemap_max_age'      => 0,
     'sitemap_exclude_types'=> array(),
-    'redirect_auto_slug'   => true,
 )
 ```
 
@@ -97,13 +85,14 @@ add_action( 'rationalseo_register_importers', function( $manager ) {
 
 | Importer | Variable Syntax | Key Gotchas |
 |----------|----------------|-------------|
-| Yoast | `%%var%%` | Redirects from 3 option keys; separator uses `sc-*` codes |
+| Yoast | `%%var%%` | Separator uses `sc-*` codes |
 | Rank Math | `%var%` | Options use hyphens (`rank-math-options-titles`) |
 | AIOSEO | `#var` | Data in `aioseo_posts` table, not post meta |
 | SEOPress | `%%var%%` | Noindex stored as `'yes'` string |
-| Redirection | N/A | Redirects only; `action_data` can be URL, JSON, or serialized |
 
 All importers: batch process 100 posts, support `skip_existing`, write home title/desc to front page post meta.
+
+**Note:** Redirect import functionality is being migrated to the separate RationalRedirects plugin. The import system still contains redirect-related code that will be cleaned up in Phase 4.
 
 ## Build
 
