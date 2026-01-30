@@ -21,6 +21,48 @@ class RationalSEO_Frontend {
 	private $settings;
 
 	/**
+	 * Cached computed title.
+	 *
+	 * @var string|null
+	 */
+	private $cached_title = null;
+
+	/**
+	 * Cached computed description.
+	 *
+	 * @var string|null
+	 */
+	private $cached_description = null;
+
+	/**
+	 * Cached canonical URL.
+	 *
+	 * @var string|null
+	 */
+	private $cached_canonical = null;
+
+	/**
+	 * Cached social image URL.
+	 *
+	 * @var string|null
+	 */
+	private $cached_social_image = null;
+
+	/**
+	 * Cached post meta for current context.
+	 *
+	 * @var array|null
+	 */
+	private $post_meta_cache = null;
+
+	/**
+	 * Cached term meta for current context.
+	 *
+	 * @var array|null
+	 */
+	private $term_meta_cache = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param RationalSEO_Settings $settings Settings instance.
@@ -105,77 +147,132 @@ class RationalSEO_Frontend {
 	}
 
 	/**
+	 * Get all RationalSEO post meta in one query.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array Associative array of meta values.
+	 */
+	private function get_post_seo_meta( $post_id ) {
+		if ( null === $this->post_meta_cache ) {
+			$all_meta = get_post_meta( $post_id );
+			$this->post_meta_cache = array(
+				'title'     => isset( $all_meta['_rationalseo_title'][0] ) ? $all_meta['_rationalseo_title'][0] : '',
+				'desc'      => isset( $all_meta['_rationalseo_desc'][0] ) ? $all_meta['_rationalseo_desc'][0] : '',
+				'noindex'   => isset( $all_meta['_rationalseo_noindex'][0] ) ? $all_meta['_rationalseo_noindex'][0] : '',
+				'canonical' => isset( $all_meta['_rationalseo_canonical'][0] ) ? $all_meta['_rationalseo_canonical'][0] : '',
+				'og_image'  => isset( $all_meta['_rationalseo_og_image'][0] ) ? $all_meta['_rationalseo_og_image'][0] : '',
+			);
+		}
+		return $this->post_meta_cache;
+	}
+
+	/**
+	 * Get all RationalSEO term meta in one query.
+	 *
+	 * @param int $term_id Term ID.
+	 * @return array Associative array of meta values.
+	 */
+	private function get_term_seo_meta( $term_id ) {
+		if ( null === $this->term_meta_cache ) {
+			$this->term_meta_cache = array(
+				'title'     => get_term_meta( $term_id, '_rationalseo_term_title', true ),
+				'desc'      => get_term_meta( $term_id, '_rationalseo_term_desc', true ),
+				'noindex'   => get_term_meta( $term_id, '_rationalseo_term_noindex', true ),
+				'canonical' => get_term_meta( $term_id, '_rationalseo_term_canonical', true ),
+				'og_image'  => get_term_meta( $term_id, '_rationalseo_term_og_image', true ),
+			);
+		}
+		return $this->term_meta_cache;
+	}
+
+	/**
 	 * Get the SEO title.
 	 *
 	 * @return string
 	 */
 	private function get_title() {
+		// Return cached value if available.
+		if ( null !== $this->cached_title ) {
+			return $this->cached_title;
+		}
+
 		$separator = $this->settings->get( 'separator', '|' );
 		$site_name = $this->settings->get( 'site_name', get_bloginfo( 'name' ) );
+		$title     = $site_name; // Default fallback.
 
 		// Homepage (static front page or default homepage).
 		if ( is_front_page() ) {
 			$front_page_id = get_option( 'page_on_front' );
 			if ( $front_page_id ) {
-				$custom_title = get_post_meta( $front_page_id, '_rationalseo_title', true );
-				if ( ! empty( $custom_title ) ) {
-					return $custom_title;
+				$meta = $this->get_post_seo_meta( $front_page_id );
+				if ( ! empty( $meta['title'] ) ) {
+					$this->cached_title = $meta['title'];
+					return $this->cached_title;
 				}
 			}
-			return sprintf( '%s %s %s', $site_name, $separator, get_bloginfo( 'description' ) );
+			$this->cached_title = sprintf( '%s %s %s', $site_name, $separator, get_bloginfo( 'description' ) );
+			return $this->cached_title;
 		}
 
 		// Blog page (separate posts page).
 		if ( is_home() ) {
 			$blog_page_id = get_option( 'page_for_posts' );
 			if ( $blog_page_id ) {
-				$custom_title = get_post_meta( $blog_page_id, '_rationalseo_title', true );
-				if ( ! empty( $custom_title ) ) {
-					return $custom_title;
+				$meta = $this->get_post_seo_meta( $blog_page_id );
+				if ( ! empty( $meta['title'] ) ) {
+					$this->cached_title = $meta['title'];
+					return $this->cached_title;
 				}
 			}
-			return sprintf( '%s %s %s', __( 'Blog', 'rationalseo' ), $separator, $site_name );
+			$this->cached_title = sprintf( '%s %s %s', __( 'Blog', 'rationalseo' ), $separator, $site_name );
+			return $this->cached_title;
 		}
 
 		// Singular posts/pages.
 		if ( is_singular() ) {
 			$post       = get_queried_object();
 			$post_title = get_the_title( $post );
+			$meta       = $this->get_post_seo_meta( $post->ID );
 
-			// Check for custom SEO title (for future post meta integration).
-			$custom_title = get_post_meta( $post->ID, '_rationalseo_title', true );
-			if ( ! empty( $custom_title ) ) {
-				return $custom_title;
+			if ( ! empty( $meta['title'] ) ) {
+				$this->cached_title = $meta['title'];
+				return $this->cached_title;
 			}
 
-			return sprintf( '%s %s %s', $post_title, $separator, $site_name );
+			$this->cached_title = sprintf( '%s %s %s', $post_title, $separator, $site_name );
+			return $this->cached_title;
 		}
 
 		// Archive pages.
 		if ( is_archive() ) {
 			if ( is_category() || is_tag() || is_tax() ) {
 				$term = get_queried_object();
-				// Check for custom term title first.
-				$custom_title = get_term_meta( $term->term_id, '_rationalseo_term_title', true );
-				if ( ! empty( $custom_title ) ) {
-					return $custom_title;
+				$meta = $this->get_term_seo_meta( $term->term_id );
+
+				if ( ! empty( $meta['title'] ) ) {
+					$this->cached_title = $meta['title'];
+					return $this->cached_title;
 				}
-				return sprintf( '%s %s %s', $term->name, $separator, $site_name );
+				$this->cached_title = sprintf( '%s %s %s', $term->name, $separator, $site_name );
+				return $this->cached_title;
 			}
 
 			if ( is_post_type_archive() ) {
 				$post_type = get_queried_object();
-				return sprintf( '%s %s %s', $post_type->labels->name, $separator, $site_name );
+				$this->cached_title = sprintf( '%s %s %s', $post_type->labels->name, $separator, $site_name );
+				return $this->cached_title;
 			}
 
 			if ( is_author() ) {
 				$author = get_queried_object();
-				return sprintf( '%s %s %s', $author->display_name, $separator, $site_name );
+				$this->cached_title = sprintf( '%s %s %s', $author->display_name, $separator, $site_name );
+				return $this->cached_title;
 			}
 
 			if ( is_date() ) {
 				$date_title = get_the_archive_title();
-				return sprintf( '%s %s %s', $date_title, $separator, $site_name );
+				$this->cached_title = sprintf( '%s %s %s', $date_title, $separator, $site_name );
+				return $this->cached_title;
 			}
 		}
 
@@ -183,16 +280,19 @@ class RationalSEO_Frontend {
 		if ( is_search() ) {
 			/* translators: %s: Search query */
 			$search_title = sprintf( __( 'Search Results for "%s"', 'rationalseo' ), get_search_query() );
-			return sprintf( '%s %s %s', $search_title, $separator, $site_name );
+			$this->cached_title = sprintf( '%s %s %s', $search_title, $separator, $site_name );
+			return $this->cached_title;
 		}
 
 		// 404 page.
 		if ( is_404() ) {
-			return sprintf( '%s %s %s', __( 'Page Not Found', 'rationalseo' ), $separator, $site_name );
+			$this->cached_title = sprintf( '%s %s %s', __( 'Page Not Found', 'rationalseo' ), $separator, $site_name );
+			return $this->cached_title;
 		}
 
 		// Fallback.
-		return $site_name;
+		$this->cached_title = $title;
+		return $this->cached_title;
 	}
 
 	/**
@@ -211,67 +311,81 @@ class RationalSEO_Frontend {
 	 * @return string
 	 */
 	private function get_description() {
+		// Return cached value if available.
+		if ( null !== $this->cached_description ) {
+			return $this->cached_description;
+		}
+
 		// Homepage (static front page or default homepage).
 		if ( is_front_page() ) {
 			$front_page_id = get_option( 'page_on_front' );
 			if ( $front_page_id ) {
-				$custom_desc = get_post_meta( $front_page_id, '_rationalseo_desc', true );
-				if ( ! empty( $custom_desc ) ) {
-					return $this->truncate_description( $custom_desc );
+				$meta = $this->get_post_seo_meta( $front_page_id );
+				if ( ! empty( $meta['desc'] ) ) {
+					$this->cached_description = $this->truncate_description( $meta['desc'] );
+					return $this->cached_description;
 				}
 			}
-			return $this->truncate_description( get_bloginfo( 'description' ) );
+			$this->cached_description = $this->truncate_description( get_bloginfo( 'description' ) );
+			return $this->cached_description;
 		}
 
 		// Blog page (separate posts page).
 		if ( is_home() ) {
 			$blog_page_id = get_option( 'page_for_posts' );
 			if ( $blog_page_id ) {
-				$custom_desc = get_post_meta( $blog_page_id, '_rationalseo_desc', true );
-				if ( ! empty( $custom_desc ) ) {
-					return $this->truncate_description( $custom_desc );
+				$meta = $this->get_post_seo_meta( $blog_page_id );
+				if ( ! empty( $meta['desc'] ) ) {
+					$this->cached_description = $this->truncate_description( $meta['desc'] );
+					return $this->cached_description;
 				}
 			}
-			return $this->truncate_description( get_bloginfo( 'description' ) );
+			$this->cached_description = $this->truncate_description( get_bloginfo( 'description' ) );
+			return $this->cached_description;
 		}
 
 		// Singular posts/pages.
 		if ( is_singular() ) {
 			$post = get_queried_object();
+			$meta = $this->get_post_seo_meta( $post->ID );
 
-			// Check for custom SEO description (for future post meta integration).
-			$custom_desc = get_post_meta( $post->ID, '_rationalseo_desc', true );
-			if ( ! empty( $custom_desc ) ) {
-				return $this->truncate_description( $custom_desc );
+			if ( ! empty( $meta['desc'] ) ) {
+				$this->cached_description = $this->truncate_description( $meta['desc'] );
+				return $this->cached_description;
 			}
 
 			// Use excerpt or generate from content.
 			if ( has_excerpt( $post ) ) {
-				return $this->truncate_description( get_the_excerpt( $post ) );
+				$this->cached_description = $this->truncate_description( get_the_excerpt( $post ) );
+				return $this->cached_description;
 			}
 
 			// Generate from content.
 			$content = wp_strip_all_tags( $post->post_content );
 			$content = preg_replace( '/\s+/', ' ', $content );
-			return $this->truncate_description( $content );
+			$this->cached_description = $this->truncate_description( $content );
+			return $this->cached_description;
 		}
 
 		// Archive pages.
 		if ( is_archive() ) {
 			if ( is_category() || is_tag() || is_tax() ) {
 				$term = get_queried_object();
-				// Check for custom term description first.
-				$custom_desc = get_term_meta( $term->term_id, '_rationalseo_term_desc', true );
-				if ( ! empty( $custom_desc ) ) {
-					return $this->truncate_description( $custom_desc );
+				$meta = $this->get_term_seo_meta( $term->term_id );
+
+				if ( ! empty( $meta['desc'] ) ) {
+					$this->cached_description = $this->truncate_description( $meta['desc'] );
+					return $this->cached_description;
 				}
 				if ( ! empty( $term->description ) ) {
-					return $this->truncate_description( $term->description );
+					$this->cached_description = $this->truncate_description( $term->description );
+					return $this->cached_description;
 				}
 			}
 		}
 
-		return '';
+		$this->cached_description = '';
+		return $this->cached_description;
 	}
 
 	/**
@@ -318,18 +432,18 @@ class RationalSEO_Frontend {
 
 		// Check for noindex on singular posts.
 		if ( is_singular() ) {
-			$post    = get_queried_object();
-			$noindex = get_post_meta( $post->ID, '_rationalseo_noindex', true );
-			if ( $noindex ) {
+			$post = get_queried_object();
+			$meta = $this->get_post_seo_meta( $post->ID );
+			if ( ! empty( $meta['noindex'] ) ) {
 				$robots[0] = 'noindex';
 			}
 		}
 
 		// Check for noindex on taxonomy archives.
 		if ( is_category() || is_tag() || is_tax() ) {
-			$term    = get_queried_object();
-			$noindex = get_term_meta( $term->term_id, '_rationalseo_term_noindex', true );
-			if ( $noindex ) {
+			$term = get_queried_object();
+			$meta = $this->get_term_seo_meta( $term->term_id );
+			if ( ! empty( $meta['noindex'] ) ) {
 				$robots[0] = 'noindex';
 			}
 		}
@@ -371,47 +485,59 @@ class RationalSEO_Frontend {
 	 * @return string
 	 */
 	private function get_canonical() {
+		// Return cached value if available.
+		if ( null !== $this->cached_canonical ) {
+			return $this->cached_canonical;
+		}
+
 		// Check for custom canonical on singular posts.
 		if ( is_singular() ) {
-			$post           = get_queried_object();
-			$custom_canonical = get_post_meta( $post->ID, '_rationalseo_canonical', true );
-			if ( ! empty( $custom_canonical ) ) {
-				return $custom_canonical;
+			$post = get_queried_object();
+			$meta = $this->get_post_seo_meta( $post->ID );
+			if ( ! empty( $meta['canonical'] ) ) {
+				$this->cached_canonical = $meta['canonical'];
+				return $this->cached_canonical;
 			}
-			return get_permalink( $post );
+			$this->cached_canonical = get_permalink( $post );
+			return $this->cached_canonical;
 		}
 
 		// Homepage.
 		if ( is_front_page() || is_home() ) {
-			return home_url( '/' );
+			$this->cached_canonical = home_url( '/' );
+			return $this->cached_canonical;
 		}
 
 		// Archive pages.
 		if ( is_archive() ) {
 			if ( is_category() || is_tag() || is_tax() ) {
 				$term = get_queried_object();
-				// Check for custom canonical first.
-				$custom_canonical = get_term_meta( $term->term_id, '_rationalseo_term_canonical', true );
-				if ( ! empty( $custom_canonical ) ) {
-					return $custom_canonical;
+				$meta = $this->get_term_seo_meta( $term->term_id );
+				if ( ! empty( $meta['canonical'] ) ) {
+					$this->cached_canonical = $meta['canonical'];
+					return $this->cached_canonical;
 				}
-				return get_term_link( $term );
+				$this->cached_canonical = get_term_link( $term );
+				return $this->cached_canonical;
 			}
 
 			if ( is_post_type_archive() ) {
 				$post_type = get_queried_object();
-				return get_post_type_archive_link( $post_type->name );
+				$this->cached_canonical = get_post_type_archive_link( $post_type->name );
+				return $this->cached_canonical;
 			}
 
 			if ( is_author() ) {
 				$author = get_queried_object();
-				return get_author_posts_url( $author->ID );
+				$this->cached_canonical = get_author_posts_url( $author->ID );
+				return $this->cached_canonical;
 			}
 		}
 
 		// Fallback to current URL (cleaned).
 		global $wp;
-		return home_url( $wp->request );
+		$this->cached_canonical = home_url( $wp->request );
+		return $this->cached_canonical;
 	}
 
 	/**
@@ -501,14 +627,19 @@ class RationalSEO_Frontend {
 	 * @return string Image URL or empty string.
 	 */
 	private function get_social_image() {
+		// Return cached value if available.
+		if ( null !== $this->cached_social_image ) {
+			return $this->cached_social_image;
+		}
+
 		// Try custom social image override for singular posts/pages.
 		if ( is_singular() ) {
 			$post = get_queried_object();
+			$meta = $this->get_post_seo_meta( $post->ID );
 
-			// Check for custom social image override.
-			$custom_image = get_post_meta( $post->ID, '_rationalseo_og_image', true );
-			if ( ! empty( $custom_image ) ) {
-				return $custom_image;
+			if ( ! empty( $meta['og_image'] ) ) {
+				$this->cached_social_image = $meta['og_image'];
+				return $this->cached_social_image;
 			}
 
 			// Try featured image.
@@ -516,33 +647,38 @@ class RationalSEO_Frontend {
 				$thumbnail_id  = get_post_thumbnail_id( $post );
 				$thumbnail_url = wp_get_attachment_image_url( $thumbnail_id, 'large' );
 				if ( $thumbnail_url ) {
-					return $thumbnail_url;
+					$this->cached_social_image = $thumbnail_url;
+					return $this->cached_social_image;
 				}
 			}
 		}
 
 		// Try custom social image for taxonomy archives.
 		if ( is_category() || is_tag() || is_tax() ) {
-			$term         = get_queried_object();
-			$custom_image = get_term_meta( $term->term_id, '_rationalseo_term_og_image', true );
-			if ( ! empty( $custom_image ) ) {
-				return $custom_image;
+			$term = get_queried_object();
+			$meta = $this->get_term_seo_meta( $term->term_id );
+			if ( ! empty( $meta['og_image'] ) ) {
+				$this->cached_social_image = $meta['og_image'];
+				return $this->cached_social_image;
 			}
 		}
 
 		// Try default social image from settings.
 		$default_image = $this->settings->get( 'social_default_image' );
 		if ( ! empty( $default_image ) ) {
-			return $default_image;
+			$this->cached_social_image = $default_image;
+			return $this->cached_social_image;
 		}
 
 		// Try site logo from settings.
 		$site_logo = $this->settings->get( 'site_logo' );
 		if ( ! empty( $site_logo ) ) {
-			return $site_logo;
+			$this->cached_social_image = $site_logo;
+			return $this->cached_social_image;
 		}
 
-		return '';
+		$this->cached_social_image = '';
+		return $this->cached_social_image;
 	}
 
 	/**
