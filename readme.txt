@@ -1,6 +1,6 @@
 === RationalSEO ===
 Contributors: rationalwp
-Tags: seo, meta tags, sitemap, schema, redirects
+Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
@@ -56,14 +56,6 @@ Rational SEO rigorously rejects features that do not directly influence search e
 * Content freshness filtering (exclude old content)
 * Post type exclusions
 
-**URL Redirects**
-
-* 301, 302, 307 redirects and 410 (Gone) responses
-* Regex redirect support with capture group substitution ($1, $2, etc.)
-* Auto-redirect when post slugs change
-* Hit counter tracking
-* Fast execution via indexed database lookups (exact match first, then regex)
-
 **Editor Integration**
 
 * Meta box on all public post types
@@ -94,26 +86,19 @@ No. Rational SEO loads zero CSS or JavaScript files on the frontend. All output 
 
 = How do I migrate from another SEO plugin? =
 
-Currently, Rational SEO does not include migration tools. You would need to manually re-enter your SEO titles and descriptions, or use a database migration script.
+Go to Settings > Rational SEO > Import tab. Rational SEO can import SEO titles, descriptions, and settings from Yoast, Rank Math, AIOSEO, and SEOPress.
 
 = Where are the settings? =
 
-Navigate to Settings > Rational SEO in your WordPress admin. Settings are organized into four tabs: General, Social, Sitemaps, and Redirects.
+Navigate to Settings > Rational SEO in your WordPress admin. Settings are organized into four tabs: General, Social, Sitemaps, and Import.
 
 == Screenshots ==
 
 1. General settings tab with site identity and homepage SEO options
 2. Post editor meta box for customizing SEO per post
-3. Redirects manager for creating and managing URL redirects
-4. XML sitemap output
+3. XML sitemap output
 
 == Changelog ==
-
-= 1.1.0 =
-* Added regex redirect support with capture group substitution
-* Two-pass redirect matching: exact match (fast) then regex patterns
-* Admin UI checkbox for marking redirects as regex
-* Regex pattern validation on save
 
 = 1.0.0 =
 * Initial release
@@ -121,13 +106,10 @@ Navigate to Settings > Rational SEO in your WordPress admin. Settings are organi
 * Open Graph and Twitter Card support
 * JSON-LD structured data with @graph format
 * XML sitemaps with caching and content freshness filtering
-* URL redirects with auto-redirect on slug change
 * Post editor meta box integration
+* Import tools for Yoast, Rank Math, AIOSEO, and SEOPress
 
 == Upgrade Notice ==
-
-= 1.1.0 =
-Adds regex redirect support for advanced URL matching patterns.
 
 = 1.0.0 =
 Initial release of Rational SEO.

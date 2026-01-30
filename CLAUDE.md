@@ -5,8 +5,8 @@ Lightweight WordPress SEO plugin. No bloat, no frontend assets, no content scori
 ## Local Development Environment
 
 - **URL:** https://development.local/wp-admin/
-- **Username:** claude
-- **Password:** &FKHRV4znkXt*SWn5k%IYTmN
+- **Username:** `claude`
+- **Password:** `!JJ8itliI3%#YC)NRnQl2*)M`
 - All `npm`/`npx` commands: prefix with `NODE_ENV=development`
 
 ## Key Classes
@@ -90,7 +90,7 @@ add_action( 'rationalseo_register_importers', function( $manager ) {
 | AIOSEO | `#var` | Data in `aioseo_posts` table, not post meta |
 | SEOPress | `%%var%%` | Noindex stored as `'yes'` string |
 
-All importers: batch process 100 posts, support `skip_existing`, write home title/desc to front page post meta.
+All importers: batch process 100 posts, support `skip_existing`, write home title/desc to front page post meta (not admin settings).
 
 ## Build
 
