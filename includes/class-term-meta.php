@@ -239,7 +239,11 @@ class RationalSEO_Term_Meta {
 				id="rationalseo_term_title"
 				name="rationalseo_term_title"
 				value=""
-				placeholder="<?php printf( esc_attr__( '{term name} %s %s', 'rationalseo' ), esc_attr( $separator ), esc_attr( $site_name ) ); ?>">
+				<?php
+				// translators: %1$s: separator character, %2$s: site name.
+				$placeholder = sprintf( esc_attr__( '{term name} %1$s %2$s', 'rationalseo' ), esc_attr( $separator ), esc_attr( $site_name ) );
+				?>
+				placeholder="<?php echo $placeholder; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Already escaped above. ?>">
 			<p class="description">
 				<?php esc_html_e( 'Custom title for search engines. Leave empty to use the default.', 'rationalseo' ); ?>
 			</p>
