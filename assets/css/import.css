@@ -140,6 +140,72 @@
 	width: 100%;
 }
 
+/* Modal Base Styles */
+.rationalseo-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.7);
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.rationalseo-modal-content {
+	background: #fff;
+	border-radius: 4px;
+	width: 90%;
+	max-width: 600px;
+	max-height: 80vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.rationalseo-modal-header {
+	padding: 15px 20px;
+	background: #f9f9f9;
+	border-bottom: 1px solid #ddd;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.rationalseo-modal-header h3 {
+	margin: 0;
+}
+
+.rationalseo-modal-close {
+	background: none;
+	border: none;
+	font-size: 24px;
+	cursor: pointer;
+	color: #666;
+}
+
+.rationalseo-modal-close:hover {
+	color: #d63638;
+}
+
+.rationalseo-modal-body {
+	padding: 20px;
+	overflow-y: auto;
+	flex: 1;
+}
+
+.rationalseo-modal-footer {
+	padding: 15px 20px;
+	background: #f9f9f9;
+	border-top: 1px solid #ddd;
+	text-align: right;
+}
+
+.rationalseo-modal-footer .button {
+	margin-left: 10px;
+}
+
 /* Import Modal Extensions */
 .rationalseo-import-modal-content {
 	max-width: 600px;

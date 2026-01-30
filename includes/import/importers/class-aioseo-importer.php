@@ -174,7 +174,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		$focus_keyphrase = '';
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'aioseo_posts';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table_name is constructed from trusted $wpdb->prefix + literal string.
 		$keyphrase_row = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT keyphrases FROM {$table_name} WHERE post_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
