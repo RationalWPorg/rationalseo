@@ -364,7 +364,7 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 	 * @return string
 	 */
 	public function get_description() {
-		return __( 'Import SEO titles, meta descriptions, redirects, and settings from Rank Math SEO.', 'rationalseo' );
+		return __( 'Import SEO titles, meta descriptions, and settings from Rank Math SEO.', 'rationalseo' );
 	}
 
 	/**
@@ -375,11 +375,6 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 	public function is_available() {
 		// Check for Rank Math post meta.
 		if ( $this->get_post_meta_count() > 0 ) {
-			return true;
-		}
-
-		// Check for Rank Math redirects.
-		if ( $this->get_redirects_count() > 0 ) {
 			return true;
 		}
 
@@ -399,7 +394,6 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 	 */
 	public function get_importable_items() {
 		$post_meta_count = $this->get_post_meta_count();
-		$redirects_count = $this->get_redirects_count();
 		$settings_count  = $this->get_settings_count();
 
 		return array(
@@ -407,11 +401,6 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 				'label'     => __( 'Post SEO Data', 'rationalseo' ),
 				'count'     => $post_meta_count,
 				'available' => $post_meta_count > 0,
-			),
-			'redirects' => array(
-				'label'     => __( 'Redirects', 'rationalseo' ),
-				'count'     => $redirects_count,
-				'available' => $redirects_count > 0,
 			),
 			'settings'  => array(
 				'label'     => __( 'Settings', 'rationalseo' ),
@@ -433,15 +422,11 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 
 		// If no specific types requested, preview all available.
 		if ( empty( $item_types ) ) {
-			$item_types = array( 'post_meta', 'redirects', 'settings' );
+			$item_types = array( 'post_meta', 'settings' );
 		}
 
 		if ( in_array( 'post_meta', $item_types, true ) ) {
 			$preview_data['post_meta'] = $this->preview_post_meta();
-		}
-
-		if ( in_array( 'redirects', $item_types, true ) ) {
-			$preview_data['redirects'] = $this->preview_redirects();
 		}
 
 		if ( in_array( 'settings', $item_types, true ) ) {
@@ -465,17 +450,13 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 
 		// If no specific types requested, import all available.
 		if ( empty( $item_types ) ) {
-			$item_types = array( 'post_meta', 'redirects', 'settings' );
+			$item_types = array( 'post_meta', 'settings' );
 		}
 
 		$import_results = array();
 
 		if ( in_array( 'post_meta', $item_types, true ) ) {
 			$import_results['post_meta'] = $this->import_post_meta( $skip_existing );
-		}
-
-		if ( in_array( 'redirects', $item_types, true ) ) {
-			$import_results['redirects'] = $this->import_redirects( $skip_existing );
 		}
 
 		if ( in_array( 'settings', $item_types, true ) ) {
@@ -544,38 +525,6 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 				"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ($placeholders) AND meta_value != ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				...$meta_keys
 			)
-		);
-
-		return absint( $count );
-	}
-
-	/**
-	 * Get count of Rank Math redirects.
-	 *
-	 * @return int
-	 */
-	private function get_redirects_count() {
-		global $wpdb;
-
-		$table_name = $wpdb->prefix . 'rank_math_redirections';
-
-		// Check if table exists.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$table_exists = $wpdb->get_var(
-			$wpdb->prepare(
-				'SHOW TABLES LIKE %s',
-				$table_name
-			)
-		);
-
-		if ( ! $table_exists ) {
-			return 0;
-		}
-
-		// Count active redirects.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
-		$count = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$table_name} WHERE status = 'active'" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
 
 		return absint( $count );
@@ -673,110 +622,6 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 	}
 
 	/**
-	 * Get Rank Math redirects from database table.
-	 *
-	 * @return array Parsed redirects array.
-	 */
-	private function get_rankmath_redirects() {
-		global $wpdb;
-
-		$table_name = $wpdb->prefix . 'rank_math_redirections';
-
-		// Check if table exists.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$table_exists = $wpdb->get_var(
-			$wpdb->prepare(
-				'SHOW TABLES LIKE %s',
-				$table_name
-			)
-		);
-
-		if ( ! $table_exists ) {
-			return array();
-		}
-
-		// Get active redirects.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
-		$redirects_raw = $wpdb->get_results(
-			"SELECT sources, url_to, header_code FROM {$table_name} WHERE status = 'active'", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			ARRAY_A
-		);
-
-		if ( empty( $redirects_raw ) ) {
-			return array();
-		}
-
-		return $this->parse_rankmath_redirects( $redirects_raw );
-	}
-
-	/**
-	 * Parse Rank Math redirect data into a normalized format.
-	 *
-	 * @param array $rankmath_redirects Raw Rank Math redirects from database.
-	 * @return array Normalized redirects.
-	 */
-	private function parse_rankmath_redirects( $rankmath_redirects ) {
-		$parsed = array();
-
-		foreach ( $rankmath_redirects as $redirect ) {
-			$sources = maybe_unserialize( $redirect['sources'] );
-
-			if ( ! is_array( $sources ) || empty( $sources ) ) {
-				continue;
-			}
-
-			$url_to      = isset( $redirect['url_to'] ) ? $redirect['url_to'] : '';
-			$status_code = isset( $redirect['header_code'] ) ? absint( $redirect['header_code'] ) : 301;
-
-			// Validate status code (skip unsupported codes).
-			$valid_codes = array( 301, 302, 307, 410 );
-			if ( ! in_array( $status_code, $valid_codes, true ) ) {
-				$status_code = 301;
-			}
-
-			// For non-410, require a destination.
-			if ( 410 !== $status_code && empty( $url_to ) ) {
-				continue;
-			}
-
-			// Each redirect can have multiple sources.
-			foreach ( $sources as $source ) {
-				$pattern    = isset( $source['pattern'] ) ? $source['pattern'] : '';
-				$comparison = isset( $source['comparison'] ) ? $source['comparison'] : 'exact';
-
-				if ( empty( $pattern ) ) {
-					continue;
-				}
-
-				// Determine if this is a regex redirect.
-				// Rank Math supports: exact, contains, start, end, regex.
-				$is_regex = ( 'regex' === $comparison );
-
-				// For non-regex patterns with contains/start/end, we convert to regex.
-				if ( 'contains' === $comparison ) {
-					$pattern = '.*' . preg_quote( $pattern, '/' ) . '.*';
-					$is_regex = true;
-				} elseif ( 'start' === $comparison ) {
-					$pattern = '^' . preg_quote( $pattern, '/' ) . '.*';
-					$is_regex = true;
-				} elseif ( 'end' === $comparison ) {
-					$pattern = '.*' . preg_quote( $pattern, '/' ) . '$';
-					$is_regex = true;
-				}
-
-				$parsed[] = array(
-					'url_from'    => sanitize_text_field( $pattern ),
-					'url_to'      => esc_url_raw( $url_to ),
-					'status_code' => $status_code,
-					'is_regex'    => $is_regex,
-				);
-			}
-		}
-
-		return $parsed;
-	}
-
-	/**
 	 * Preview post meta import.
 	 *
 	 * @return array Preview data.
@@ -849,23 +694,6 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 		return array(
 			'total'   => $this->get_post_meta_count(),
 			'samples' => $preview,
-		);
-	}
-
-	/**
-	 * Preview redirects import.
-	 *
-	 * @return array Preview data.
-	 */
-	private function preview_redirects() {
-		$redirects = $this->get_rankmath_redirects();
-
-		// Return first 5 for preview.
-		$samples = array_slice( $redirects, 0, 5 );
-
-		return array(
-			'total'   => count( $redirects ),
-			'samples' => $samples,
 		);
 	}
 
@@ -1114,59 +942,6 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		return false;
-	}
-
-	/**
-	 * Import redirects from Rank Math.
-	 *
-	 * @param bool $skip_existing Whether to skip redirects that already exist.
-	 * @return array Import results.
-	 */
-	private function import_redirects( $skip_existing = false ) {
-		$result = array(
-			'imported' => 0,
-			'skipped'  => 0,
-			'failed'   => 0,
-			'errors'   => array(),
-		);
-
-		$redirects = $this->get_rankmath_redirects();
-
-		if ( empty( $redirects ) ) {
-			return $result;
-		}
-
-		// Get the redirects instance.
-		$redirects_manager = RationalSEO::get_instance()->get_redirects();
-
-		foreach ( $redirects as $redirect ) {
-			// Check if redirect already exists.
-			if ( $skip_existing && $redirects_manager->redirect_exists( $redirect['url_from'], $redirect['is_regex'] ) ) {
-				$result['skipped']++;
-				continue;
-			}
-
-			// Add the redirect.
-			$insert_id = $redirects_manager->add_redirect(
-				$redirect['url_from'],
-				$redirect['url_to'],
-				$redirect['status_code'],
-				$redirect['is_regex']
-			);
-
-			if ( false !== $insert_id ) {
-				$result['imported']++;
-			} else {
-				$result['failed']++;
-				$result['errors'][] = sprintf(
-					/* translators: %s: source URL */
-					__( 'Failed to import redirect: %s', 'rationalseo' ),
-					$redirect['url_from']
-				);
-			}
-		}
-
-		return $result;
 	}
 
 	/**

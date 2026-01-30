@@ -83,9 +83,6 @@ class RationalSEO_Import_Manager {
 
 		// Register SEOPress importer.
 		$manager->register( new RationalSEO_SEOPress_Importer( $this->settings ) );
-
-		// Register Redirection plugin importer.
-		$manager->register( new RationalSEO_Redirection_Importer( $this->settings ) );
 	}
 
 	/**

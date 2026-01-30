@@ -317,7 +317,7 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 	 * @return string
 	 */
 	public function get_description() {
-		return __( 'Import SEO titles, meta descriptions, redirects, and settings from Yoast SEO.', 'rationalseo' );
+		return __( 'Import SEO titles, meta descriptions, and settings from Yoast SEO.', 'rationalseo' );
 	}
 
 	/**
@@ -328,11 +328,6 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 	public function is_available() {
 		// Check for Yoast post meta.
 		if ( $this->get_post_meta_count() > 0 ) {
-			return true;
-		}
-
-		// Check for Yoast redirects.
-		if ( $this->get_redirects_count() > 0 ) {
 			return true;
 		}
 
@@ -353,7 +348,6 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 	 */
 	public function get_importable_items() {
 		$post_meta_count = $this->get_post_meta_count();
-		$redirects_count = $this->get_redirects_count();
 		$settings_count  = $this->get_settings_count();
 
 		return array(
@@ -361,11 +355,6 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 				'label'     => __( 'Post SEO Data', 'rationalseo' ),
 				'count'     => $post_meta_count,
 				'available' => $post_meta_count > 0,
-			),
-			'redirects' => array(
-				'label'     => __( 'Redirects', 'rationalseo' ),
-				'count'     => $redirects_count,
-				'available' => $redirects_count > 0,
 			),
 			'settings'  => array(
 				'label'     => __( 'Settings', 'rationalseo' ),
@@ -387,15 +376,11 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 
 		// If no specific types requested, preview all available.
 		if ( empty( $item_types ) ) {
-			$item_types = array( 'post_meta', 'redirects', 'settings' );
+			$item_types = array( 'post_meta', 'settings' );
 		}
 
 		if ( in_array( 'post_meta', $item_types, true ) ) {
 			$preview_data['post_meta'] = $this->preview_post_meta();
-		}
-
-		if ( in_array( 'redirects', $item_types, true ) ) {
-			$preview_data['redirects'] = $this->preview_redirects();
 		}
 
 		if ( in_array( 'settings', $item_types, true ) ) {
@@ -419,17 +404,13 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 
 		// If no specific types requested, import all available.
 		if ( empty( $item_types ) ) {
-			$item_types = array( 'post_meta', 'redirects', 'settings' );
+			$item_types = array( 'post_meta', 'settings' );
 		}
 
 		$import_results = array();
 
 		if ( in_array( 'post_meta', $item_types, true ) ) {
 			$import_results['post_meta'] = $this->import_post_meta( $skip_existing );
-		}
-
-		if ( in_array( 'redirects', $item_types, true ) ) {
-			$import_results['redirects'] = $this->import_redirects( $skip_existing );
 		}
 
 		if ( in_array( 'settings', $item_types, true ) ) {
@@ -497,16 +478,6 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 		);
 
 		return absint( $count );
-	}
-
-	/**
-	 * Get count of Yoast redirects.
-	 *
-	 * @return int
-	 */
-	private function get_redirects_count() {
-		$redirects = $this->get_yoast_redirects();
-		return count( $redirects );
 	}
 
 	/**
@@ -589,105 +560,6 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 	}
 
 	/**
-	 * Get Yoast redirects from options.
-	 *
-	 * @return array Parsed redirects array.
-	 */
-	private function get_yoast_redirects() {
-		$redirects = array();
-
-		// Try different option keys Yoast has used over versions.
-		$option_keys = array(
-			'wpseo-premium-redirects-base',
-			'wpseo_redirect',
-			'wpseo-premium-redirects-export-plain',
-		);
-
-		foreach ( $option_keys as $key ) {
-			$yoast_redirects = get_option( $key, array() );
-			if ( ! empty( $yoast_redirects ) && is_array( $yoast_redirects ) ) {
-				$redirects = $this->parse_yoast_redirects( $yoast_redirects );
-				if ( ! empty( $redirects ) ) {
-					break;
-				}
-			}
-		}
-
-		// If still empty, try to find any wpseo redirect options.
-		if ( empty( $redirects ) ) {
-			global $wpdb;
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$option_row = $wpdb->get_row(
-				"SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE 'wpseo%redirect%' AND option_value != '' LIMIT 1"
-			);
-			if ( $option_row && ! empty( $option_row->option_value ) ) {
-				$maybe_redirects = maybe_unserialize( $option_row->option_value );
-				if ( is_array( $maybe_redirects ) ) {
-					$redirects = $this->parse_yoast_redirects( $maybe_redirects );
-				}
-			}
-		}
-
-		return $redirects;
-	}
-
-	/**
-	 * Parse Yoast redirect data into a normalized format.
-	 *
-	 * @param array $yoast_redirects Raw Yoast redirects array.
-	 * @return array Normalized redirects.
-	 */
-	private function parse_yoast_redirects( $yoast_redirects ) {
-		$parsed = array();
-
-		foreach ( $yoast_redirects as $key => $redirect ) {
-			$url_from    = '';
-			$url_to      = '';
-			$status_code = 301;
-			$is_regex    = false;
-
-			if ( isset( $redirect['origin'] ) ) {
-				// Format 1: Standard Yoast format (wpseo-premium-redirects-base).
-				$url_from    = isset( $redirect['origin'] ) ? $redirect['origin'] : '';
-				$url_to      = isset( $redirect['url'] ) ? $redirect['url'] : '';
-				$status_code = isset( $redirect['type'] ) ? absint( $redirect['type'] ) : 301;
-				$is_regex    = isset( $redirect['format'] ) && 'regex' === $redirect['format'];
-			} elseif ( is_string( $key ) && isset( $redirect['url'] ) ) {
-				// Format 2: Key-based format (wpseo-premium-redirects-export-plain).
-				$url_from    = $key;
-				$url_to      = isset( $redirect['url'] ) ? $redirect['url'] : '';
-				$status_code = isset( $redirect['type'] ) ? absint( $redirect['type'] ) : 301;
-				$is_regex    = false;
-			}
-
-			// Skip empty or invalid entries.
-			if ( empty( $url_from ) ) {
-				continue;
-			}
-
-			// For non-410, require a destination.
-			if ( 410 !== $status_code && empty( $url_to ) ) {
-				continue;
-			}
-
-			// Validate status code (skip 451 - not supported).
-			$valid_codes = array( 301, 302, 307, 410 );
-			if ( ! in_array( $status_code, $valid_codes, true ) ) {
-				$status_code = 301;
-			}
-
-			$parsed[] = array(
-				'url_from'    => sanitize_text_field( $url_from ),
-				'url_to'      => esc_url_raw( $url_to ),
-				'status_code' => $status_code,
-				'is_regex'    => $is_regex,
-			);
-		}
-
-		return $parsed;
-	}
-
-	/**
 	 * Preview post meta import.
 	 *
 	 * @return array Preview data.
@@ -752,23 +624,6 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 		return array(
 			'total'   => $this->get_post_meta_count(),
 			'samples' => $preview,
-		);
-	}
-
-	/**
-	 * Preview redirects import.
-	 *
-	 * @return array Preview data.
-	 */
-	private function preview_redirects() {
-		$redirects = $this->get_yoast_redirects();
-
-		// Return first 5 for preview.
-		$samples = array_slice( $redirects, 0, 5 );
-
-		return array(
-			'total'   => count( $redirects ),
-			'samples' => $samples,
 		);
 	}
 
@@ -1009,59 +864,6 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		return false;
-	}
-
-	/**
-	 * Import redirects from Yoast.
-	 *
-	 * @param bool $skip_existing Whether to skip redirects that already exist.
-	 * @return array Import results.
-	 */
-	private function import_redirects( $skip_existing = false ) {
-		$result = array(
-			'imported' => 0,
-			'skipped'  => 0,
-			'failed'   => 0,
-			'errors'   => array(),
-		);
-
-		$redirects = $this->get_yoast_redirects();
-
-		if ( empty( $redirects ) ) {
-			return $result;
-		}
-
-		// Get the redirects instance.
-		$redirects_manager = RationalSEO::get_instance()->get_redirects();
-
-		foreach ( $redirects as $redirect ) {
-			// Check if redirect already exists.
-			if ( $skip_existing && $redirects_manager->redirect_exists( $redirect['url_from'], $redirect['is_regex'] ) ) {
-				$result['skipped']++;
-				continue;
-			}
-
-			// Add the redirect.
-			$insert_id = $redirects_manager->add_redirect(
-				$redirect['url_from'],
-				$redirect['url_to'],
-				$redirect['status_code'],
-				$redirect['is_regex']
-			);
-
-			if ( false !== $insert_id ) {
-				$result['imported']++;
-			} else {
-				$result['failed']++;
-				$result['errors'][] = sprintf(
-					/* translators: %s: source URL */
-					__( 'Failed to import redirect: %s', 'rationalseo' ),
-					$redirect['url_from']
-				);
-			}
-		}
-
-		return $result;
 	}
 
 	/**

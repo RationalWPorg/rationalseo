@@ -319,7 +319,7 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 	 * @return string
 	 */
 	public function get_description() {
-		return __( 'Import SEO titles, meta descriptions, redirects, and settings from SEOPress.', 'rationalseo' );
+		return __( 'Import SEO titles, meta descriptions, and settings from SEOPress.', 'rationalseo' );
 	}
 
 	/**
@@ -330,11 +330,6 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 	public function is_available() {
 		// Check for SEOPress post meta.
 		if ( $this->get_post_meta_count() > 0 ) {
-			return true;
-		}
-
-		// Check for SEOPress redirects.
-		if ( $this->get_redirects_count() > 0 ) {
 			return true;
 		}
 
@@ -354,7 +349,6 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 	 */
 	public function get_importable_items() {
 		$post_meta_count = $this->get_post_meta_count();
-		$redirects_count = $this->get_redirects_count();
 		$settings_count  = $this->get_settings_count();
 
 		return array(
@@ -362,11 +356,6 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 				'label'     => __( 'Post SEO Data', 'rationalseo' ),
 				'count'     => $post_meta_count,
 				'available' => $post_meta_count > 0,
-			),
-			'redirects' => array(
-				'label'     => __( 'Redirects', 'rationalseo' ),
-				'count'     => $redirects_count,
-				'available' => $redirects_count > 0,
 			),
 			'settings'  => array(
 				'label'     => __( 'Settings', 'rationalseo' ),
@@ -388,15 +377,11 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 
 		// If no specific types requested, preview all available.
 		if ( empty( $item_types ) ) {
-			$item_types = array( 'post_meta', 'redirects', 'settings' );
+			$item_types = array( 'post_meta', 'settings' );
 		}
 
 		if ( in_array( 'post_meta', $item_types, true ) ) {
 			$preview_data['post_meta'] = $this->preview_post_meta();
-		}
-
-		if ( in_array( 'redirects', $item_types, true ) ) {
-			$preview_data['redirects'] = $this->preview_redirects();
 		}
 
 		if ( in_array( 'settings', $item_types, true ) ) {
@@ -420,17 +405,13 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 
 		// If no specific types requested, import all available.
 		if ( empty( $item_types ) ) {
-			$item_types = array( 'post_meta', 'redirects', 'settings' );
+			$item_types = array( 'post_meta', 'settings' );
 		}
 
 		$import_results = array();
 
 		if ( in_array( 'post_meta', $item_types, true ) ) {
 			$import_results['post_meta'] = $this->import_post_meta( $skip_existing );
-		}
-
-		if ( in_array( 'redirects', $item_types, true ) ) {
-			$import_results['redirects'] = $this->import_redirects( $skip_existing );
 		}
 
 		if ( in_array( 'settings', $item_types, true ) ) {
@@ -505,25 +486,6 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 	}
 
 	/**
-	 * Get count of SEOPress redirects.
-	 *
-	 * SEOPress stores redirects as post meta, not in a separate table.
-	 *
-	 * @return int
-	 */
-	private function get_redirects_count() {
-		global $wpdb;
-
-		// Count posts with redirect enabled.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$count = $wpdb->get_var(
-			"SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key = '_seopress_redirections_enabled' AND meta_value = 'yes'"
-		);
-
-		return absint( $count );
-	}
-
-	/**
 	 * Get count of importable settings.
 	 *
 	 * @return int
@@ -575,62 +537,6 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		return $count;
-	}
-
-	/**
-	 * Get SEOPress redirects from post meta.
-	 *
-	 * @return array Parsed redirects array.
-	 */
-	private function get_seopress_redirects() {
-		global $wpdb;
-
-		// Get posts with redirects enabled.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$post_ids = $wpdb->get_col(
-			"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_seopress_redirections_enabled' AND meta_value = 'yes'"
-		);
-
-		if ( empty( $post_ids ) ) {
-			return array();
-		}
-
-		$redirects = array();
-
-		foreach ( $post_ids as $post_id ) {
-			$redirect_value = get_post_meta( $post_id, '_seopress_redirections_value', true );
-			$redirect_type  = get_post_meta( $post_id, '_seopress_redirections_type', true );
-
-			if ( empty( $redirect_value ) ) {
-				continue;
-			}
-
-			// Get the post permalink as the source URL.
-			$source_url = get_permalink( $post_id );
-			if ( ! $source_url ) {
-				continue;
-			}
-
-			// Parse source URL to get just the path.
-			$parsed_url = wp_parse_url( $source_url );
-			$url_from   = isset( $parsed_url['path'] ) ? $parsed_url['path'] : '/';
-
-			// Validate status code.
-			$status_code = absint( $redirect_type );
-			$valid_codes = array( 301, 302, 307 );
-			if ( ! in_array( $status_code, $valid_codes, true ) ) {
-				$status_code = 301;
-			}
-
-			$redirects[] = array(
-				'url_from'    => sanitize_text_field( $url_from ),
-				'url_to'      => esc_url_raw( $redirect_value ),
-				'status_code' => $status_code,
-				'is_regex'    => false, // SEOPress free doesn't support regex.
-			);
-		}
-
-		return $redirects;
 	}
 
 	/**
@@ -703,23 +609,6 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 		return array(
 			'total'   => $this->get_post_meta_count(),
 			'samples' => $preview,
-		);
-	}
-
-	/**
-	 * Preview redirects import.
-	 *
-	 * @return array Preview data.
-	 */
-	private function preview_redirects() {
-		$redirects = $this->get_seopress_redirects();
-
-		// Return first 5 for preview.
-		$samples = array_slice( $redirects, 0, 5 );
-
-		return array(
-			'total'   => count( $redirects ),
-			'samples' => $samples,
 		);
 	}
 
@@ -966,59 +855,6 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 		}
 
 		return false;
-	}
-
-	/**
-	 * Import redirects from SEOPress.
-	 *
-	 * @param bool $skip_existing Whether to skip redirects that already exist.
-	 * @return array Import results.
-	 */
-	private function import_redirects( $skip_existing = false ) {
-		$result = array(
-			'imported' => 0,
-			'skipped'  => 0,
-			'failed'   => 0,
-			'errors'   => array(),
-		);
-
-		$redirects = $this->get_seopress_redirects();
-
-		if ( empty( $redirects ) ) {
-			return $result;
-		}
-
-		// Get the redirects instance.
-		$redirects_manager = RationalSEO::get_instance()->get_redirects();
-
-		foreach ( $redirects as $redirect ) {
-			// Check if redirect already exists.
-			if ( $skip_existing && $redirects_manager->redirect_exists( $redirect['url_from'], $redirect['is_regex'] ) ) {
-				$result['skipped']++;
-				continue;
-			}
-
-			// Add the redirect.
-			$insert_id = $redirects_manager->add_redirect(
-				$redirect['url_from'],
-				$redirect['url_to'],
-				$redirect['status_code'],
-				$redirect['is_regex']
-			);
-
-			if ( false !== $insert_id ) {
-				$result['imported']++;
-			} else {
-				$result['failed']++;
-				$result['errors'][] = sprintf(
-					/* translators: %s: source URL */
-					__( 'Failed to import redirect: %s', 'rationalseo' ),
-					$redirect['url_from']
-				);
-			}
-		}
-
-		return $result;
 	}
 
 	/**

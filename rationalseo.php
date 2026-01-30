@@ -45,7 +45,6 @@ require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-yoast-imp
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-rankmath-importer.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-aioseo-importer.php';
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-seopress-importer.php';
-require_once RATIONALSEO_PLUGIN_DIR . 'includes/import/importers/class-redirection-importer.php';
 
 require_once RATIONALSEO_PLUGIN_DIR . 'includes/class-rationalseo.php';
 
