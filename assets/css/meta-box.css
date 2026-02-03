@@ -194,3 +194,51 @@
 .rationalseo-check-label {
 	color: #1d2327;
 }
+
+/* AI Button Styles */
+.rationalseo-input-with-button {
+	display: flex;
+	gap: 8px;
+	align-items: flex-start;
+}
+
+.rationalseo-input-with-button input {
+	flex: 1;
+}
+
+.rationalseo-field-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 12px;
+	margin-top: 6px;
+}
+
+.rationalseo-field-footer .description {
+	margin-top: 0;
+	flex: 1;
+}
+
+.rationalseo-ai-button {
+	position: relative;
+	min-width: 80px;
+}
+
+.rationalseo-ai-button .rationalseo-ai-button-spinner {
+	display: none;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	margin: 0;
+	float: none;
+}
+
+.rationalseo-ai-button.is-loading .rationalseo-ai-button-text {
+	visibility: hidden;
+}
+
+.rationalseo-ai-button.is-loading .rationalseo-ai-button-spinner {
+	display: block;
+	visibility: visible;
+}

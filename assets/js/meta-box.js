@@ -169,6 +169,176 @@
 	}
 
 	/**
+	 * Show or hide AI buttons based on API key availability.
+	 */
+	function maybeShowAI() {
+		if ( ! config.hasApiKey ) {
+			return;
+		}
+
+		var suggestBtn = document.getElementById( 'rationalseo-suggest-keyword' );
+		var generateBtn = document.getElementById( 'rationalseo-generate-description' );
+
+		if ( suggestBtn ) {
+			suggestBtn.style.display = '';
+		}
+		if ( generateBtn ) {
+			generateBtn.style.display = '';
+		}
+	}
+
+	/**
+	 * Set loading state on a button.
+	 *
+	 * @param {HTMLElement} button    The button element.
+	 * @param {boolean}     isLoading Whether to show loading state.
+	 */
+	function setButtonLoading( button, isLoading ) {
+		if ( ! button ) {
+			return;
+		}
+
+		button.disabled = isLoading;
+		if ( isLoading ) {
+			button.classList.add( 'is-loading' );
+		} else {
+			button.classList.remove( 'is-loading' );
+		}
+	}
+
+	/**
+	 * Get the post title.
+	 *
+	 * @return {string} The post title.
+	 */
+	function getPostTitle() {
+		// Try Gutenberg first.
+		if ( window.wp && window.wp.data && window.wp.data.select( 'core/editor' ) ) {
+			var title = window.wp.data.select( 'core/editor' ).getEditedPostAttribute( 'title' );
+			if ( title ) {
+				return title;
+			}
+		}
+
+		// Fall back to Classic Editor.
+		var titleField = document.getElementById( 'title' );
+		if ( titleField ) {
+			return titleField.value || '';
+		}
+
+		return '';
+	}
+
+	/**
+	 * Suggest a focus keyword using AI.
+	 */
+	function suggestKeyword() {
+		var button = document.getElementById( 'rationalseo-suggest-keyword' );
+		var keywordField = document.getElementById( config.keywordId );
+
+		if ( ! button || ! keywordField ) {
+			return;
+		}
+
+		var content = getEditorContent();
+		var title = getPostTitle();
+
+		if ( ! content && ! title ) {
+			alert( 'Please add some content or a title first.' );
+			return;
+		}
+
+		setButtonLoading( button, true );
+
+		var formData = new FormData();
+		formData.append( 'action', 'rationalseo_suggest_keyword' );
+		formData.append( 'nonce', config.nonce );
+		formData.append( 'content', content );
+		formData.append( 'title', title );
+
+		fetch( config.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: formData
+		} )
+		.then( function( response ) {
+			return response.json();
+		} )
+		.then( function( data ) {
+			setButtonLoading( button, false );
+
+			if ( data.success && data.data.keyword ) {
+				keywordField.value = data.data.keyword;
+				// Trigger input event to update indicators.
+				keywordField.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+			} else {
+				var message = data.data && data.data.message ? data.data.message : 'Failed to suggest keyword.';
+				alert( message );
+			}
+		} )
+		.catch( function( error ) {
+			setButtonLoading( button, false );
+			alert( 'An error occurred. Please try again.' );
+		} );
+	}
+
+	/**
+	 * Generate a meta description using AI.
+	 */
+	function generateDescription() {
+		var button = document.getElementById( 'rationalseo-generate-description' );
+		var descField = document.getElementById( config.descId );
+		var keywordField = document.getElementById( config.keywordId );
+
+		if ( ! button || ! descField ) {
+			return;
+		}
+
+		var content = getEditorContent();
+		var title = getPostTitle();
+		var keyword = keywordField ? keywordField.value.trim() : '';
+
+		if ( ! content && ! title ) {
+			alert( 'Please add some content or a title first.' );
+			return;
+		}
+
+		setButtonLoading( button, true );
+
+		var formData = new FormData();
+		formData.append( 'action', 'rationalseo_generate_description' );
+		formData.append( 'nonce', config.nonce );
+		formData.append( 'content', content );
+		formData.append( 'title', title );
+		formData.append( 'keyword', keyword );
+
+		fetch( config.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: formData
+		} )
+		.then( function( response ) {
+			return response.json();
+		} )
+		.then( function( data ) {
+			setButtonLoading( button, false );
+
+			if ( data.success && data.data.description ) {
+				descField.value = data.data.description;
+				// Trigger input event to update indicators.
+				descField.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+			} else {
+				var message = data.data && data.data.message ? data.data.message : 'Failed to generate description.';
+				alert( message );
+			}
+		} )
+		.catch( function( error ) {
+			setButtonLoading( button, false );
+			alert( 'An error occurred. Please try again.' );
+		} );
+	}
+
+	/**
 	 * Initialize event listeners.
 	 */
 	function init() {
@@ -229,6 +399,19 @@
 		var slugField = document.getElementById( 'post_name' );
 		if ( slugField ) {
 			slugField.addEventListener( 'input', debouncedUpdate );
+		}
+
+		// Initialize AI buttons.
+		maybeShowAI();
+
+		var suggestBtn = document.getElementById( 'rationalseo-suggest-keyword' );
+		var generateBtn = document.getElementById( 'rationalseo-generate-description' );
+
+		if ( suggestBtn ) {
+			suggestBtn.addEventListener( 'click', suggestKeyword );
+		}
+		if ( generateBtn ) {
+			generateBtn.addEventListener( 'click', generateDescription );
 		}
 
 		// Initial check.
