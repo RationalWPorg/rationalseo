@@ -52,8 +52,11 @@ array(
     'sitemap_enabled'      => true,
     'sitemap_max_age'      => 0,
     'sitemap_exclude_types'=> array(),
+    'openai_api_key'       => '',  // Stored encrypted (AES-256-CBC)
 )
 ```
+
+**Encrypted Settings:** The `openai_api_key` setting is stored encrypted using AES-256-CBC with `wp_salt('auth')`. Use `$settings->get_decrypted('openai_api_key')` to retrieve the plaintext value.
 
 **Behavior:** Empty strings in saved settings are filtered out before merging with defaults. This ensures blank admin fields fall back correctly.
 
