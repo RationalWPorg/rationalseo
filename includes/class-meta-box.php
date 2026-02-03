@@ -124,6 +124,9 @@ class RationalSEO_Meta_Box {
 				'keywordId' => 'rationalseo_focus_keyword',
 				'titleId'   => 'rationalseo_title',
 				'descId'    => 'rationalseo_desc',
+				'hasApiKey' => ! empty( $this->settings->get_decrypted( 'openai_api_key' ) ),
+				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+				'nonce'     => wp_create_nonce( 'rationalseo_meta_box' ),
 			)
 		);
 	}
@@ -171,12 +174,18 @@ class RationalSEO_Meta_Box {
 				<label for="rationalseo_focus_keyword">
 					<?php esc_html_e( 'Focus Keyword', 'rationalseo' ); ?>
 				</label>
-				<input type="text"
-					id="rationalseo_focus_keyword"
-					name="rationalseo_focus_keyword"
-					value="<?php echo esc_attr( $focus_keyword ); ?>"
-					class="large-text"
-					placeholder="<?php esc_attr_e( 'Enter your target keyword or phrase', 'rationalseo' ); ?>">
+				<div class="rationalseo-input-with-button">
+					<input type="text"
+						id="rationalseo_focus_keyword"
+						name="rationalseo_focus_keyword"
+						value="<?php echo esc_attr( $focus_keyword ); ?>"
+						class="large-text"
+						placeholder="<?php esc_attr_e( 'Enter your target keyword or phrase', 'rationalseo' ); ?>">
+					<button type="button" id="rationalseo-suggest-keyword" class="button rationalseo-ai-button" style="display: none;">
+						<span class="rationalseo-ai-button-text"><?php esc_html_e( 'Suggest', 'rationalseo' ); ?></span>
+						<span class="rationalseo-ai-button-spinner spinner"></span>
+					</button>
+				</div>
 				<p class="description">
 					<?php esc_html_e( 'The main keyword you want this content to rank for.', 'rationalseo' ); ?>
 				</p>
@@ -211,9 +220,15 @@ class RationalSEO_Meta_Box {
 					rows="3"
 					class="large-text"
 					placeholder="<?php esc_html_e( 'Enter a description for search results...', 'rationalseo' ); ?>"><?php echo esc_textarea( $desc ); ?></textarea>
-				<p class="description">
-					<?php esc_html_e( 'Leave empty to use the excerpt or auto-generate from content.', 'rationalseo' ); ?>
-				</p>
+				<div class="rationalseo-field-footer">
+					<p class="description">
+						<?php esc_html_e( 'Leave empty to use the excerpt or auto-generate from content.', 'rationalseo' ); ?>
+					</p>
+					<button type="button" id="rationalseo-generate-description" class="button rationalseo-ai-button" style="display: none;">
+						<span class="rationalseo-ai-button-text"><?php esc_html_e( 'Generate', 'rationalseo' ); ?></span>
+						<span class="rationalseo-ai-button-spinner spinner"></span>
+					</button>
+				</div>
 			</div>
 
 			<details class="rationalseo-advanced">

@@ -75,6 +75,13 @@ class RationalSEO {
 	private $term_meta;
 
 	/**
+	 * AI Assistant instance.
+	 *
+	 * @var RationalSEO_AI_Assistant
+	 */
+	private $ai_assistant;
+
+	/**
 	 * Get the singleton instance.
 	 *
 	 * @return RationalSEO
@@ -100,6 +107,7 @@ class RationalSEO {
 			$this->meta_box     = new RationalSEO_Meta_Box( $this->settings );
 			$this->term_meta    = new RationalSEO_Term_Meta( $this->settings );
 			$this->import_admin = new RationalSEO_Import_Admin( $this->import_manager );
+			$this->ai_assistant = new RationalSEO_AI_Assistant( $this->settings );
 		}
 	}
 
@@ -173,5 +181,14 @@ class RationalSEO {
 	 */
 	public function get_term_meta() {
 		return $this->term_meta;
+	}
+
+	/**
+	 * Get AI assistant instance.
+	 *
+	 * @return RationalSEO_AI_Assistant|null
+	 */
+	public function get_ai_assistant() {
+		return $this->ai_assistant;
 	}
 }

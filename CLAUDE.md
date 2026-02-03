@@ -20,6 +20,7 @@ Lightweight WordPress SEO plugin. No bloat, no frontend assets, no content scori
 | `RationalSEO_Meta_Box` | `class-meta-box.php` | Post editor SEO fields |
 | `RationalSEO_Term_Meta` | `class-term-meta.php` | Taxonomy term SEO fields |
 | `RationalSEO_Import_Manager` | `import/class-import-manager.php` | Importer registry |
+| `RationalSEO_AI_Assistant` | `class-ai-assistant.php` | AI keyword/description generation |
 
 ## Database Schema
 
@@ -57,6 +58,18 @@ array(
 ```
 
 **Encrypted Settings:** The `openai_api_key` setting is stored encrypted using AES-256-CBC with `wp_salt('auth')`. Use `$settings->get_decrypted('openai_api_key')` to retrieve the plaintext value.
+
+## AI Assistant
+
+The AI Assistant provides optional AI-powered SEO features using OpenAI's GPT-4o-mini model.
+
+**AJAX Actions:**
+| Action | Purpose |
+|--------|---------|
+| `rationalseo_suggest_keyword` | Analyze content and suggest a focus keyword |
+| `rationalseo_generate_description` | Generate meta description incorporating keyword |
+
+**Usage:** AI buttons appear in the meta box only when `openai_api_key` is configured. Both actions require the `rationalseo_meta_box` nonce and `edit_posts` capability.
 
 **Behavior:** Empty strings in saved settings are filtered out before merging with defaults. This ensures blank admin fields fall back correctly.
 
