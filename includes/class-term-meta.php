@@ -23,11 +23,12 @@ class RationalSEO_Term_Meta {
 	/**
 	 * Meta keys used by this plugin for terms.
 	 */
-	const META_TITLE     = '_rationalseo_term_title';
-	const META_DESC      = '_rationalseo_term_desc';
-	const META_CANONICAL = '_rationalseo_term_canonical';
-	const META_NOINDEX   = '_rationalseo_term_noindex';
-	const META_OG_IMAGE  = '_rationalseo_term_og_image';
+	const META_TITLE         = '_rationalseo_term_title';
+	const META_DESC          = '_rationalseo_term_desc';
+	const META_CANONICAL     = '_rationalseo_term_canonical';
+	const META_NOINDEX       = '_rationalseo_term_noindex';
+	const META_OG_IMAGE      = '_rationalseo_term_og_image';
+	const META_FOCUS_KEYWORD = '_rationalseo_term_focus_keyword';
 
 	/**
 	 * Nonce action for security.
@@ -113,11 +114,12 @@ class RationalSEO_Term_Meta {
 	 */
 	public function render_edit_fields( $term, $taxonomy ) {
 		// Get existing values.
-		$title     = get_term_meta( $term->term_id, self::META_TITLE, true );
-		$desc      = get_term_meta( $term->term_id, self::META_DESC, true );
-		$canonical = get_term_meta( $term->term_id, self::META_CANONICAL, true );
-		$noindex   = get_term_meta( $term->term_id, self::META_NOINDEX, true );
-		$og_image  = get_term_meta( $term->term_id, self::META_OG_IMAGE, true );
+		$title         = get_term_meta( $term->term_id, self::META_TITLE, true );
+		$desc          = get_term_meta( $term->term_id, self::META_DESC, true );
+		$canonical     = get_term_meta( $term->term_id, self::META_CANONICAL, true );
+		$noindex       = get_term_meta( $term->term_id, self::META_NOINDEX, true );
+		$og_image      = get_term_meta( $term->term_id, self::META_OG_IMAGE, true );
+		$focus_keyword = get_term_meta( $term->term_id, self::META_FOCUS_KEYWORD, true );
 
 		// Calculate default title for placeholder.
 		$separator     = $this->settings->get( 'separator', '|' );
@@ -142,6 +144,23 @@ class RationalSEO_Term_Meta {
 					placeholder="<?php echo esc_attr( $default_title ); ?>">
 				<p class="description">
 					<?php esc_html_e( 'Custom title for search engines. Leave empty to use the default.', 'rationalseo' ); ?>
+				</p>
+			</td>
+		</tr>
+
+		<tr class="form-field rationalseo-term-field">
+			<th scope="row">
+				<label for="rationalseo_term_focus_keyword"><?php esc_html_e( 'Focus Keyword', 'rationalseo' ); ?></label>
+			</th>
+			<td>
+				<input type="text"
+					id="rationalseo_term_focus_keyword"
+					name="rationalseo_term_focus_keyword"
+					value="<?php echo esc_attr( $focus_keyword ); ?>"
+					class="large-text"
+					placeholder="<?php esc_attr_e( 'Enter your target keyword or phrase', 'rationalseo' ); ?>">
+				<p class="description">
+					<?php esc_html_e( 'The main keyword you want this archive to rank for.', 'rationalseo' ); ?>
 				</p>
 			</td>
 		</tr>
@@ -250,6 +269,18 @@ class RationalSEO_Term_Meta {
 		</div>
 
 		<div class="form-field rationalseo-term-field">
+			<label for="rationalseo_term_focus_keyword"><?php esc_html_e( 'Focus Keyword', 'rationalseo' ); ?></label>
+			<input type="text"
+				id="rationalseo_term_focus_keyword"
+				name="rationalseo_term_focus_keyword"
+				value=""
+				placeholder="<?php esc_attr_e( 'Enter your target keyword or phrase', 'rationalseo' ); ?>">
+			<p class="description">
+				<?php esc_html_e( 'The main keyword you want this archive to rank for.', 'rationalseo' ); ?>
+			</p>
+		</div>
+
+		<div class="form-field rationalseo-term-field">
 			<label for="rationalseo_term_desc"><?php esc_html_e( 'Meta Description', 'rationalseo' ); ?></label>
 			<textarea
 				id="rationalseo_term_desc"
@@ -344,6 +375,17 @@ class RationalSEO_Term_Meta {
 			update_term_meta( $term_id, self::META_TITLE, $title );
 		} else {
 			delete_term_meta( $term_id, self::META_TITLE );
+		}
+
+		// Sanitize and save Focus Keyword.
+		$focus_keyword = isset( $_POST['rationalseo_term_focus_keyword'] )
+			? sanitize_text_field( wp_unslash( $_POST['rationalseo_term_focus_keyword'] ) )
+			: '';
+
+		if ( ! empty( $focus_keyword ) ) {
+			update_term_meta( $term_id, self::META_FOCUS_KEYWORD, $focus_keyword );
+		} else {
+			delete_term_meta( $term_id, self::META_FOCUS_KEYWORD );
 		}
 
 		// Sanitize and save Meta Description.

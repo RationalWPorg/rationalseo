@@ -23,11 +23,12 @@ class RationalSEO_Meta_Box {
 	/**
 	 * Meta keys used by this plugin.
 	 */
-	const META_TITLE     = '_rationalseo_title';
-	const META_DESC      = '_rationalseo_desc';
-	const META_CANONICAL = '_rationalseo_canonical';
-	const META_NOINDEX   = '_rationalseo_noindex';
-	const META_OG_IMAGE  = '_rationalseo_og_image';
+	const META_TITLE         = '_rationalseo_title';
+	const META_DESC          = '_rationalseo_desc';
+	const META_CANONICAL     = '_rationalseo_canonical';
+	const META_NOINDEX       = '_rationalseo_noindex';
+	const META_OG_IMAGE      = '_rationalseo_og_image';
+	const META_FOCUS_KEYWORD = '_rationalseo_focus_keyword';
 
 	/**
 	 * Nonce action for security.
@@ -116,11 +117,12 @@ class RationalSEO_Meta_Box {
 	 */
 	public function render_meta_box( $post ) {
 		// Get existing values.
-		$title     = get_post_meta( $post->ID, self::META_TITLE, true );
-		$desc      = get_post_meta( $post->ID, self::META_DESC, true );
-		$canonical = get_post_meta( $post->ID, self::META_CANONICAL, true );
-		$noindex   = get_post_meta( $post->ID, self::META_NOINDEX, true );
-		$og_image  = get_post_meta( $post->ID, self::META_OG_IMAGE, true );
+		$title         = get_post_meta( $post->ID, self::META_TITLE, true );
+		$desc          = get_post_meta( $post->ID, self::META_DESC, true );
+		$canonical     = get_post_meta( $post->ID, self::META_CANONICAL, true );
+		$noindex       = get_post_meta( $post->ID, self::META_NOINDEX, true );
+		$og_image      = get_post_meta( $post->ID, self::META_OG_IMAGE, true );
+		$focus_keyword = get_post_meta( $post->ID, self::META_FOCUS_KEYWORD, true );
 
 		// Calculate default title for placeholder.
 		$separator  = $this->settings->get( 'separator', '|' );
@@ -144,6 +146,21 @@ class RationalSEO_Meta_Box {
 					placeholder="<?php echo esc_attr( $default_title ); ?>">
 				<p class="description">
 					<?php esc_html_e( 'Custom title for search engines. Leave empty to use the default.', 'rationalseo' ); ?>
+				</p>
+			</div>
+
+			<div class="rationalseo-field">
+				<label for="rationalseo_focus_keyword">
+					<?php esc_html_e( 'Focus Keyword', 'rationalseo' ); ?>
+				</label>
+				<input type="text"
+					id="rationalseo_focus_keyword"
+					name="rationalseo_focus_keyword"
+					value="<?php echo esc_attr( $focus_keyword ); ?>"
+					class="large-text"
+					placeholder="<?php esc_attr_e( 'Enter your target keyword or phrase', 'rationalseo' ); ?>">
+				<p class="description">
+					<?php esc_html_e( 'The main keyword you want this content to rank for.', 'rationalseo' ); ?>
 				</p>
 			</div>
 
@@ -256,6 +273,17 @@ class RationalSEO_Meta_Box {
 			update_post_meta( $post_id, self::META_TITLE, $title );
 		} else {
 			delete_post_meta( $post_id, self::META_TITLE );
+		}
+
+		// Sanitize and save Focus Keyword.
+		$focus_keyword = isset( $_POST['rationalseo_focus_keyword'] )
+			? sanitize_text_field( wp_unslash( $_POST['rationalseo_focus_keyword'] ) )
+			: '';
+
+		if ( ! empty( $focus_keyword ) ) {
+			update_post_meta( $post_id, self::META_FOCUS_KEYWORD, $focus_keyword );
+		} else {
+			delete_post_meta( $post_id, self::META_FOCUS_KEYWORD );
 		}
 
 		// Sanitize and save Meta Description.

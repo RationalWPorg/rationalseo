@@ -33,6 +33,7 @@ Lightweight WordPress SEO plugin. No bloat, no frontend assets, no content scori
 | `_rationalseo_canonical` | Custom canonical URL |
 | `_rationalseo_noindex` | Noindex flag (stores `'1'`) |
 | `_rationalseo_og_image` | Custom social image URL |
+| `_rationalseo_focus_keyword` | Focus keyword for content optimization |
 
 **Term Meta Keys:** Same as post meta but prefixed `_rationalseo_term_*`
 
