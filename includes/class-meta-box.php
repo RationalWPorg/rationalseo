@@ -108,6 +108,24 @@ class RationalSEO_Meta_Box {
 			array(),
 			RATIONALSEO_VERSION
 		);
+
+		wp_enqueue_script(
+			'rationalseo-meta-box',
+			RATIONALSEO_PLUGIN_URL . 'assets/js/meta-box.js',
+			array( 'wp-data' ),
+			RATIONALSEO_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'rationalseo-meta-box',
+			'rationalseoMetaBox',
+			array(
+				'keywordId' => 'rationalseo_focus_keyword',
+				'titleId'   => 'rationalseo_title',
+				'descId'    => 'rationalseo_desc',
+			)
+		);
 	}
 
 	/**
@@ -162,6 +180,25 @@ class RationalSEO_Meta_Box {
 				<p class="description">
 					<?php esc_html_e( 'The main keyword you want this content to rank for.', 'rationalseo' ); ?>
 				</p>
+
+				<div id="rationalseo-keyword-checks" class="rationalseo-keyword-checks" style="display: none;">
+					<div id="rationalseo-check-title" class="rationalseo-check">
+						<span class="rationalseo-check-icon"></span>
+						<span class="rationalseo-check-label"><?php esc_html_e( 'In SEO title', 'rationalseo' ); ?></span>
+					</div>
+					<div id="rationalseo-check-desc" class="rationalseo-check">
+						<span class="rationalseo-check-icon"></span>
+						<span class="rationalseo-check-label"><?php esc_html_e( 'In meta description', 'rationalseo' ); ?></span>
+					</div>
+					<div id="rationalseo-check-first-paragraph" class="rationalseo-check">
+						<span class="rationalseo-check-icon"></span>
+						<span class="rationalseo-check-label"><?php esc_html_e( 'In first paragraph', 'rationalseo' ); ?></span>
+					</div>
+					<div id="rationalseo-check-slug" class="rationalseo-check">
+						<span class="rationalseo-check-icon"></span>
+						<span class="rationalseo-check-label"><?php esc_html_e( 'In URL slug', 'rationalseo' ); ?></span>
+					</div>
+				</div>
 			</div>
 
 			<div class="rationalseo-field">
