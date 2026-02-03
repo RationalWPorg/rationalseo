@@ -6,6 +6,7 @@ CLAUDE.md
 # Build artifacts
 *.zip
 /build/
+/rationalseo/
 
 # Dependencies (if added later)
 node_modules/

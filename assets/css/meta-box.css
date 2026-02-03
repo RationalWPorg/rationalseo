@@ -136,3 +136,61 @@
 .form-field.rationalseo-term-field .rationalseo-term-advanced {
 	margin-top: 8px;
 }
+
+/* Keyword Presence Indicators */
+.rationalseo-keyword-checks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 20px;
+	margin-top: 12px;
+	padding: 12px 14px;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.rationalseo-check {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.rationalseo-check-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.rationalseo-check-icon::before {
+	content: "?";
+	color: #646970;
+}
+
+.rationalseo-check.is-present .rationalseo-check-icon {
+	background: #00a32a;
+	color: #fff;
+}
+
+.rationalseo-check.is-present .rationalseo-check-icon::before {
+	content: "\2713";
+}
+
+.rationalseo-check.is-missing .rationalseo-check-icon {
+	background: #d63638;
+	color: #fff;
+}
+
+.rationalseo-check.is-missing .rationalseo-check-icon::before {
+	content: "\2717";
+}
+
+.rationalseo-check-label {
+	color: #1d2327;
+}
