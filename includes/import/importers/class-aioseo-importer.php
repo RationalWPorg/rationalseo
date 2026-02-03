@@ -454,10 +454,10 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 			return 0;
 		}
 
-		// Count posts with any SEO data (title, description, canonical, or robots_noindex).
+		// Count posts with any SEO data (title, description, canonical, robots_noindex, og_image, or keyphrases).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$count = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '')" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT COUNT(*) FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '') OR (keyphrases IS NOT NULL AND keyphrases != '')" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
 
 		return absint( $count );
@@ -616,7 +616,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 		// Get sample posts with AIOSEO data (limit to 5 for preview).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 		$rows = $wpdb->get_results(
-			"SELECT post_id, title, description, canonical_url, robots_noindex, og_image_custom_url FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '') LIMIT 5", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT post_id, title, description, canonical_url, robots_noindex, og_image_custom_url, keyphrases FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '') OR (keyphrases IS NOT NULL AND keyphrases != '') LIMIT 5", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			ARRAY_A
 		);
 
@@ -657,6 +657,14 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 			}
 			if ( ! empty( $row['og_image_custom_url'] ) ) {
 				$meta_preview['meta']['_rationalseo_og_image'] = $row['og_image_custom_url'];
+			}
+
+			// Focus keyphrase from JSON keyphrases column.
+			if ( ! empty( $row['keyphrases'] ) ) {
+				$keyphrases = json_decode( $row['keyphrases'], true );
+				if ( ! empty( $keyphrases['focus']['keyphrase'] ) ) {
+					$meta_preview['meta']['_rationalseo_focus_keyword'] = $keyphrases['focus']['keyphrase'];
+				}
 			}
 
 			if ( ! empty( $meta_preview['meta'] ) ) {
@@ -831,7 +839,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is safely constructed from $wpdb->prefix and a hardcoded string.
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT post_id, title, description, canonical_url, robots_noindex, og_image_custom_url FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '') LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					"SELECT post_id, title, description, canonical_url, robots_noindex, og_image_custom_url, keyphrases FROM {$table_name} WHERE (title IS NOT NULL AND title != '') OR (description IS NOT NULL AND description != '') OR (canonical_url IS NOT NULL AND canonical_url != '') OR robots_noindex = 1 OR (og_image_custom_url IS NOT NULL AND og_image_custom_url != '') OR (keyphrases IS NOT NULL AND keyphrases != '') LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					self::BATCH_SIZE,
 					$offset
 				),
@@ -911,6 +919,18 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 					}
 				}
 
+				// Import focus keyphrase from JSON keyphrases column.
+				if ( ! empty( $row['keyphrases'] ) ) {
+					$keyphrases = json_decode( $row['keyphrases'], true );
+					if ( ! empty( $keyphrases['focus']['keyphrase'] ) ) {
+						$existing = get_post_meta( $post_id, '_rationalseo_focus_keyword', true );
+						if ( empty( $existing ) ) {
+							update_post_meta( $post_id, '_rationalseo_focus_keyword', sanitize_text_field( $keyphrases['focus']['keyphrase'] ) );
+							$post_imported = true;
+						}
+					}
+				}
+
 				if ( $post_imported ) {
 					$result['imported']++;
 				}
@@ -940,6 +960,7 @@ class RationalSEO_AIOSEO_Importer implements RationalSEO_Importer_Interface {
 			'_rationalseo_canonical',
 			'_rationalseo_noindex',
 			'_rationalseo_og_image',
+			'_rationalseo_focus_keyword',
 		);
 
 		foreach ( $rational_keys as $key ) {
