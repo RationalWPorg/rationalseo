@@ -49,3 +49,17 @@
 .rationalseo-settings > .notice:not(#rationalseo-settings-message) {
 	display: none;
 }
+
+/* API Key Status */
+.rationalseo-api-status {
+	display: inline-block;
+	margin-left: 10px;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+}
+
+.rationalseo-api-configured {
+	background-color: #d4edda;
+	color: #155724;
+}
