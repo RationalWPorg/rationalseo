@@ -170,7 +170,10 @@ class RationalSEO_Settings {
 	/**
 	 * Decrypt a value encrypted with encrypt_value().
 	 *
-	 * @param string $encrypted Base64-encoded IV + ciphertext.
+	 * Handles both encrypted values (base64-encoded IV + ciphertext) and
+	 * legacy plain text values that were stored before encryption was added.
+	 *
+	 * @param string $encrypted Base64-encoded IV + ciphertext, or plain text.
 	 * @return string Decrypted value, or empty string on failure.
 	 */
 	public function decrypt_value( $encrypted ) {
@@ -178,8 +181,15 @@ class RationalSEO_Settings {
 			return '';
 		}
 
+		// Check if this looks like an OpenAI API key (plain text, not encrypted).
+		// OpenAI keys start with 'sk-' (or 'sk-proj-', 'sk-org-', etc.)
+		if ( preg_match( '/^sk-[a-zA-Z0-9_-]+$/', $encrypted ) ) {
+			return $encrypted;
+		}
+
 		$data = base64_decode( $encrypted, true );
 		if ( false === $data ) {
+			// Not valid base64 - can't decrypt, return empty.
 			return '';
 		}
 
@@ -187,7 +197,8 @@ class RationalSEO_Settings {
 		$key       = hash( 'sha256', wp_salt( 'auth' ), true );
 		$iv_length = openssl_cipher_iv_length( $method );
 
-		if ( strlen( $data ) < $iv_length ) {
+		// If decoded data is too short to contain IV + ciphertext, can't decrypt.
+		if ( strlen( $data ) < $iv_length + 1 ) {
 			return '';
 		}
 
@@ -199,7 +210,15 @@ class RationalSEO_Settings {
 			return '';
 		}
 
-		return $decrypted;
+		// Only return the decrypted value if it looks like a valid API key.
+		// This prevents returning garbage if decryption key changed.
+		if ( preg_match( '/^sk-[a-zA-Z0-9_-]+$/', $decrypted ) ) {
+			return $decrypted;
+		}
+
+		// Decryption produced something that doesn't look like an API key.
+		// Return empty so user is prompted to re-enter.
+		return '';
 	}
 
 	/**

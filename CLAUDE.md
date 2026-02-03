@@ -57,7 +57,7 @@ array(
 )
 ```
 
-**Encrypted Settings:** The `openai_api_key` setting is stored encrypted using AES-256-CBC with `wp_salt('auth')`. Use `$settings->get_decrypted('openai_api_key')` to retrieve the plaintext value.
+**Encrypted Settings:** The `openai_api_key` setting is stored encrypted using AES-256-CBC with `wp_salt('auth')`. Use `$settings->get_decrypted('openai_api_key')` to retrieve the plaintext value. Decryption validates the result matches the `sk-*` API key format; returns empty string if decryption fails or WordPress salts changed (user must re-enter key).
 
 ## AI Assistant
 
