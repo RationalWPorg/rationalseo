@@ -103,9 +103,17 @@ add_action( 'rationalseo_register_importers', function( $manager ) {
 | Importer | Variable Syntax | Key Gotchas |
 |----------|----------------|-------------|
 | Yoast | `%%var%%` | Separator uses `sc-*` codes |
-| Rank Math | `%var%` | Options use hyphens (`rank-math-options-titles`) |
-| AIOSEO | `#var` | Data in `aioseo_posts` table, not post meta |
-| SEOPress | `%%var%%` | Noindex stored as `'yes'` string |
+| Rank Math | `%var%` | Options use hyphens (`rank-math-options-titles`), focus keyword comma-separated |
+| AIOSEO | `#var` | Data in `aioseo_posts` table, not post meta; keyphrases stored as JSON |
+| SEOPress | `%%var%%` | Noindex stored as `'yes'` string, target keyword comma-separated |
+
+**Focus Keyword Import:**
+| Source Plugin | Source Key/Column | Notes |
+|--------------|-------------------|-------|
+| Yoast | `_yoast_wpseo_focuskw` | Direct meta mapping |
+| Rank Math | `rank_math_focus_keyword` | Takes first keyword only |
+| AIOSEO | `aioseo_posts.keyphrases` | JSON field, extracts `focus.keyphrase` |
+| SEOPress | `_seopress_analysis_target_kw` | Takes first keyword only |
 
 All importers: batch process 100 posts, support `skip_existing`, write home title/desc to front page post meta (not admin settings).
 
