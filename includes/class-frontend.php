@@ -156,11 +156,12 @@ class RationalSEO_Frontend {
 		if ( null === $this->post_meta_cache ) {
 			$all_meta = get_post_meta( $post_id );
 			$this->post_meta_cache = array(
-				'title'     => isset( $all_meta['_rationalseo_title'][0] ) ? $all_meta['_rationalseo_title'][0] : '',
-				'desc'      => isset( $all_meta['_rationalseo_desc'][0] ) ? $all_meta['_rationalseo_desc'][0] : '',
-				'noindex'   => isset( $all_meta['_rationalseo_noindex'][0] ) ? $all_meta['_rationalseo_noindex'][0] : '',
-				'canonical' => isset( $all_meta['_rationalseo_canonical'][0] ) ? $all_meta['_rationalseo_canonical'][0] : '',
-				'og_image'  => isset( $all_meta['_rationalseo_og_image'][0] ) ? $all_meta['_rationalseo_og_image'][0] : '',
+				'title'         => isset( $all_meta['_rationalseo_title'][0] ) ? $all_meta['_rationalseo_title'][0] : '',
+				'desc'          => isset( $all_meta['_rationalseo_desc'][0] ) ? $all_meta['_rationalseo_desc'][0] : '',
+				'noindex'       => isset( $all_meta['_rationalseo_noindex'][0] ) ? $all_meta['_rationalseo_noindex'][0] : '',
+				'canonical'     => isset( $all_meta['_rationalseo_canonical'][0] ) ? $all_meta['_rationalseo_canonical'][0] : '',
+				'og_image'      => isset( $all_meta['_rationalseo_og_image'][0] ) ? $all_meta['_rationalseo_og_image'][0] : '',
+				'focus_keyword' => isset( $all_meta['_rationalseo_focus_keyword'][0] ) ? $all_meta['_rationalseo_focus_keyword'][0] : '',
 			);
 		}
 		return $this->post_meta_cache;
@@ -354,18 +355,28 @@ class RationalSEO_Frontend {
 			$post = get_queried_object();
 			$meta = $this->get_post_seo_meta( $post->ID );
 
+			// Priority 1: Custom meta description.
 			if ( ! empty( $meta['desc'] ) ) {
 				$this->cached_description = $this->truncate_description( $meta['desc'] );
 				return $this->cached_description;
 			}
 
-			// Use excerpt or generate from content.
+			// Priority 2: Excerpt.
 			if ( has_excerpt( $post ) ) {
 				$this->cached_description = $this->truncate_description( get_the_excerpt( $post ) );
 				return $this->cached_description;
 			}
 
-			// Generate from content.
+			// Priority 3: Sentence containing focus keyword.
+			if ( ! empty( $meta['focus_keyword'] ) ) {
+				$keyword_sentence = $this->find_keyword_sentence( $post->post_content, $meta['focus_keyword'] );
+				if ( $keyword_sentence ) {
+					$this->cached_description = $keyword_sentence;
+					return $this->cached_description;
+				}
+			}
+
+			// Priority 4: Generate from content beginning.
 			$content = wp_strip_all_tags( $post->post_content );
 			$content = preg_replace( '/\s+/', ' ', $content );
 			$this->cached_description = $this->truncate_description( $content );
@@ -391,6 +402,48 @@ class RationalSEO_Frontend {
 
 		$this->cached_description = '';
 		return $this->cached_description;
+	}
+
+	/**
+	 * Find a sentence containing the focus keyword.
+	 *
+	 * @param string $content    The content to search.
+	 * @param string $keyword    The keyword to find.
+	 * @param int    $max_length Maximum length for the result (default 160).
+	 * @return string|null The sentence containing the keyword, or null if not found.
+	 */
+	private function find_keyword_sentence( $content, $keyword, $max_length = 160 ) {
+		if ( empty( $keyword ) || empty( $content ) ) {
+			return null;
+		}
+
+		// Strip HTML and normalize whitespace.
+		$content = wp_strip_all_tags( $content );
+		$content = preg_replace( '/\s+/', ' ', $content );
+		$content = trim( $content );
+
+		if ( empty( $content ) ) {
+			return null;
+		}
+
+		// Split into sentences (handle ., !, ?).
+		$sentences = preg_split( '/(?<=[.!?])\s+/', $content, -1, PREG_SPLIT_NO_EMPTY );
+
+		if ( empty( $sentences ) ) {
+			return null;
+		}
+
+		// Find first sentence containing keyword (case-insensitive).
+		$keyword_lower = mb_strtolower( $keyword );
+		foreach ( $sentences as $sentence ) {
+			$sentence = trim( $sentence );
+			if ( false !== mb_stripos( $sentence, $keyword_lower ) ) {
+				// Found a match - truncate if needed.
+				return $this->truncate_description( $sentence, $max_length );
+			}
+		}
+
+		return null;
 	}
 
 	/**
