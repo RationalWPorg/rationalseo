@@ -195,6 +195,21 @@
 	color: #1d2327;
 }
 
+/* Suggest All */
+.rationalseo-suggest-all-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 20px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.rationalseo-suggest-all-help {
+	color: #646970;
+	font-size: 13px;
+}
+
 /* AI Button Styles */
 .rationalseo-input-with-button {
 	display: flex;

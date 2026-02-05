@@ -177,13 +177,21 @@
 		}
 
 		var suggestBtn = document.getElementById( 'rationalseo-suggest-keyword' );
-		var generateBtn = document.getElementById( 'rationalseo-generate-description' );
+		var generateDescBtn = document.getElementById( 'rationalseo-generate-description' );
+		var generateTitleBtn = document.getElementById( 'rationalseo-generate-title' );
+		var suggestAllWrapper = document.querySelector( '.rationalseo-suggest-all-wrapper' );
 
 		if ( suggestBtn ) {
 			suggestBtn.style.display = '';
 		}
-		if ( generateBtn ) {
-			generateBtn.style.display = '';
+		if ( generateDescBtn ) {
+			generateDescBtn.style.display = '';
+		}
+		if ( generateTitleBtn ) {
+			generateTitleBtn.style.display = '';
+		}
+		if ( suggestAllWrapper ) {
+			suggestAllWrapper.style.display = '';
 		}
 	}
 
@@ -339,6 +347,120 @@
 	}
 
 	/**
+	 * Generate an SEO title using AI.
+	 */
+	function generateTitle() {
+		var button = document.getElementById( 'rationalseo-generate-title' );
+		var titleField = document.getElementById( config.titleId );
+		var keywordField = document.getElementById( config.keywordId );
+
+		if ( ! button || ! titleField ) {
+			return;
+		}
+
+		var content = getEditorContent();
+		var title = getPostTitle();
+		var keyword = keywordField ? keywordField.value.trim() : '';
+
+		if ( ! content && ! title ) {
+			alert( 'Please add some content or a title first.' );
+			return;
+		}
+
+		setButtonLoading( button, true );
+
+		var formData = new FormData();
+		formData.append( 'action', 'rationalseo_generate_title' );
+		formData.append( 'nonce', config.nonce );
+		formData.append( 'content', content );
+		formData.append( 'title', title );
+		formData.append( 'keyword', keyword );
+
+		fetch( config.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: formData
+		} )
+		.then( function( response ) {
+			return response.json();
+		} )
+		.then( function( data ) {
+			setButtonLoading( button, false );
+
+			if ( data.success && data.data.title ) {
+				titleField.value = data.data.title;
+				titleField.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+			} else {
+				var message = data.data && data.data.message ? data.data.message : 'Failed to generate title.';
+				alert( message );
+			}
+		} )
+		.catch( function() {
+			setButtonLoading( button, false );
+			alert( 'An error occurred. Please try again.' );
+		} );
+	}
+
+	/**
+	 * Suggest keyword, title, and description together using AI.
+	 */
+	function suggestAll() {
+		var button = document.getElementById( 'rationalseo-suggest-all' );
+		var keywordField = document.getElementById( config.keywordId );
+		var titleField = document.getElementById( config.titleId );
+		var descField = document.getElementById( config.descId );
+
+		if ( ! button || ! keywordField || ! titleField || ! descField ) {
+			return;
+		}
+
+		var content = getEditorContent();
+		var title = getPostTitle();
+
+		if ( ! content && ! title ) {
+			alert( 'Please add some content or a title first.' );
+			return;
+		}
+
+		setButtonLoading( button, true );
+
+		var formData = new FormData();
+		formData.append( 'action', 'rationalseo_suggest_all' );
+		formData.append( 'nonce', config.nonce );
+		formData.append( 'content', content );
+		formData.append( 'title', title );
+
+		fetch( config.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: formData
+		} )
+		.then( function( response ) {
+			return response.json();
+		} )
+		.then( function( data ) {
+			setButtonLoading( button, false );
+
+			if ( data.success && data.data.keyword && data.data.title && data.data.description ) {
+				keywordField.value = data.data.keyword;
+				titleField.value = data.data.title;
+				descField.value = data.data.description;
+
+				keywordField.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+				titleField.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+				descField.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+			} else {
+				var message = data.data && data.data.message ? data.data.message : 'Failed to generate suggestions.';
+				alert( message );
+			}
+		} )
+		.catch( function() {
+			setButtonLoading( button, false );
+			alert( 'An error occurred. Please try again.' );
+		} );
+	}
+
+	/**
 	 * Initialize event listeners.
 	 */
 	function init() {
@@ -405,13 +527,21 @@
 		maybeShowAI();
 
 		var suggestBtn = document.getElementById( 'rationalseo-suggest-keyword' );
-		var generateBtn = document.getElementById( 'rationalseo-generate-description' );
+		var generateDescBtn = document.getElementById( 'rationalseo-generate-description' );
+		var generateTitleBtn = document.getElementById( 'rationalseo-generate-title' );
+		var suggestAllBtn = document.getElementById( 'rationalseo-suggest-all' );
 
 		if ( suggestBtn ) {
 			suggestBtn.addEventListener( 'click', suggestKeyword );
 		}
-		if ( generateBtn ) {
-			generateBtn.addEventListener( 'click', generateDescription );
+		if ( generateDescBtn ) {
+			generateDescBtn.addEventListener( 'click', generateDescription );
+		}
+		if ( generateTitleBtn ) {
+			generateTitleBtn.addEventListener( 'click', generateTitle );
+		}
+		if ( suggestAllBtn ) {
+			suggestAllBtn.addEventListener( 'click', suggestAll );
 		}
 
 		// Initial check.

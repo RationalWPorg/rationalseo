@@ -50,6 +50,8 @@ class RationalSEO_AI_Assistant {
 	private function init_hooks() {
 		add_action( 'wp_ajax_rationalseo_suggest_keyword', array( $this, 'ajax_suggest_keyword' ) );
 		add_action( 'wp_ajax_rationalseo_generate_description', array( $this, 'ajax_generate_description' ) );
+		add_action( 'wp_ajax_rationalseo_generate_title', array( $this, 'ajax_generate_title' ) );
+		add_action( 'wp_ajax_rationalseo_suggest_all', array( $this, 'ajax_suggest_all' ) );
 	}
 
 	/**
@@ -166,12 +168,122 @@ class RationalSEO_AI_Assistant {
 	}
 
 	/**
+	 * AJAX handler for generating an SEO title.
+	 */
+	public function ajax_generate_title() {
+		check_ajax_referer( 'rationalseo_meta_box', 'nonce' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'rationalseo' ) ) );
+		}
+
+		$content = isset( $_POST['content'] ) ? wp_kses_post( wp_unslash( $_POST['content'] ) ) : '';
+		$title   = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+		$keyword = isset( $_POST['keyword'] ) ? sanitize_text_field( wp_unslash( $_POST['keyword'] ) ) : '';
+
+		if ( empty( $content ) && empty( $title ) ) {
+			wp_send_json_error( array( 'message' => __( 'No content to analyze.', 'rationalseo' ) ) );
+		}
+
+		// Strip HTML and limit content length for API.
+		$plain_content = wp_strip_all_tags( $content );
+		$plain_content = preg_replace( '/\s+/', ' ', $plain_content );
+		$plain_content = trim( $plain_content );
+
+		if ( strlen( $plain_content ) > 2000 ) {
+			$plain_content = substr( $plain_content, 0, 2000 ) . '...';
+		}
+
+		$prompt = "Write a compelling SEO title (50-60 characters) for the following content. The title should be engaging and accurately represent the content. Do NOT include a site name or separator — just the page title itself.\n\n";
+
+		if ( ! empty( $keyword ) ) {
+			$prompt .= "IMPORTANT: Naturally include this focus keyword: \"{$keyword}\"\n\n";
+		}
+
+		if ( ! empty( $title ) ) {
+			$prompt .= "Post title: {$title}\n\n";
+		}
+
+		$prompt .= "Content: {$plain_content}\n\n";
+		$prompt .= "Respond with ONLY the SEO title, nothing else. No quotes around it.";
+
+		$response = $this->call_openai( $prompt );
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error( array( 'message' => $response->get_error_message() ) );
+		}
+
+		$seo_title = trim( $response );
+		$seo_title = trim( $seo_title, '"\'.' );
+
+		wp_send_json_success( array( 'title' => $seo_title ) );
+	}
+
+	/**
+	 * AJAX handler for suggesting keyword, title, and description together.
+	 */
+	public function ajax_suggest_all() {
+		check_ajax_referer( 'rationalseo_meta_box', 'nonce' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'rationalseo' ) ) );
+		}
+
+		$content = isset( $_POST['content'] ) ? wp_kses_post( wp_unslash( $_POST['content'] ) ) : '';
+		$title   = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+
+		if ( empty( $content ) && empty( $title ) ) {
+			wp_send_json_error( array( 'message' => __( 'No content to analyze.', 'rationalseo' ) ) );
+		}
+
+		// Strip HTML and limit content length for API.
+		$plain_content = wp_strip_all_tags( $content );
+		$plain_content = preg_replace( '/\s+/', ' ', $plain_content );
+		$plain_content = trim( $plain_content );
+
+		if ( strlen( $plain_content ) > 2000 ) {
+			$plain_content = substr( $plain_content, 0, 2000 ) . '...';
+		}
+
+		$prompt = "Analyze the following content and provide all three of these SEO elements:\n\n";
+		$prompt .= "1. A focus keyword or keyphrase (2-4 words) that this content should rank for\n";
+		$prompt .= "2. A compelling SEO title (50-60 characters) — do NOT include a site name or separator\n";
+		$prompt .= "3. A meta description (150-160 characters) that includes the keyword naturally\n\n";
+
+		if ( ! empty( $title ) ) {
+			$prompt .= "Post title: {$title}\n\n";
+		}
+
+		$prompt .= "Content: {$plain_content}\n\n";
+		$prompt .= 'Respond with ONLY valid JSON in this exact format: {"keyword":"...","title":"...","description":"..."}';
+
+		$response = $this->call_openai( $prompt, 300 );
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error( array( 'message' => $response->get_error_message() ) );
+		}
+
+		$data = json_decode( trim( $response ), true );
+
+		if ( ! is_array( $data ) || empty( $data['keyword'] ) || empty( $data['title'] ) || empty( $data['description'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid response from API.', 'rationalseo' ) ) );
+		}
+
+		wp_send_json_success( array(
+			'keyword'     => sanitize_text_field( $data['keyword'] ),
+			'title'       => sanitize_text_field( $data['title'] ),
+			'description' => sanitize_text_field( $data['description'] ),
+		) );
+	}
+
+	/**
 	 * Call the OpenAI API.
 	 *
-	 * @param string $prompt The prompt to send.
+	 * @param string $prompt     The prompt to send.
+	 * @param int    $max_tokens Maximum tokens for the response.
 	 * @return string|WP_Error The response text or error.
 	 */
-	private function call_openai( $prompt ) {
+	private function call_openai( $prompt, $max_tokens = 100 ) {
 		$api_key = $this->settings->get_decrypted( 'openai_api_key' );
 
 		if ( empty( $api_key ) ) {
@@ -190,7 +302,7 @@ class RationalSEO_AI_Assistant {
 					'content' => $prompt,
 				),
 			),
-			'max_tokens'  => 100,
+			'max_tokens'  => $max_tokens,
 			'temperature' => 0.7,
 		);
 

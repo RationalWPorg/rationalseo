@@ -155,16 +155,32 @@ class RationalSEO_Meta_Box {
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
 		?>
 		<div class="rationalseo-meta-box">
+			<div class="rationalseo-suggest-all-wrapper" style="display: none;">
+				<button type="button" id="rationalseo-suggest-all" class="button rationalseo-ai-button">
+					<span class="rationalseo-ai-button-text"><?php esc_html_e( 'Suggest All', 'rationalseo' ); ?></span>
+					<span class="rationalseo-ai-button-spinner spinner"></span>
+				</button>
+				<span class="rationalseo-suggest-all-help">
+					<?php esc_html_e( 'Generate keyword, title, and description in one click.', 'rationalseo' ); ?>
+				</span>
+			</div>
+
 			<div class="rationalseo-field">
 				<label for="rationalseo_title">
 					<?php esc_html_e( 'SEO Title', 'rationalseo' ); ?>
 				</label>
-				<input type="text"
-					id="rationalseo_title"
-					name="rationalseo_title"
-					value="<?php echo esc_attr( $title ); ?>"
-					class="large-text"
-					placeholder="<?php echo esc_attr( $default_title ); ?>">
+				<div class="rationalseo-input-with-button">
+					<input type="text"
+						id="rationalseo_title"
+						name="rationalseo_title"
+						value="<?php echo esc_attr( $title ); ?>"
+						class="large-text"
+						placeholder="<?php echo esc_attr( $default_title ); ?>">
+					<button type="button" id="rationalseo-generate-title" class="button rationalseo-ai-button" style="display: none;">
+						<span class="rationalseo-ai-button-text"><?php esc_html_e( 'Generate', 'rationalseo' ); ?></span>
+						<span class="rationalseo-ai-button-spinner spinner"></span>
+					</button>
+				</div>
 				<p class="description">
 					<?php esc_html_e( 'Custom title for search engines. Leave empty to use the default.', 'rationalseo' ); ?>
 				</p>
