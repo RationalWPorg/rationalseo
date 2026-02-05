@@ -264,7 +264,12 @@ class RationalSEO_Frontend {
 			}
 
 			if ( is_post_type_archive() ) {
-				$post_type = get_queried_object();
+				$post_type    = get_queried_object();
+				$custom_title = $this->settings->get( 'archive_title_' . $post_type->name, '' );
+				if ( ! empty( $custom_title ) ) {
+					$this->cached_title = $custom_title;
+					return $this->cached_title;
+				}
 				$this->cached_title = sprintf( '%s %s %s', $post_type->labels->name, $separator, $site_name );
 				return $this->cached_title;
 			}
@@ -395,6 +400,15 @@ class RationalSEO_Frontend {
 				}
 				if ( ! empty( $term->description ) ) {
 					$this->cached_description = $this->truncate_description( $term->description );
+					return $this->cached_description;
+				}
+			}
+
+			if ( is_post_type_archive() ) {
+				$post_type          = get_queried_object();
+				$custom_description = $this->settings->get( 'archive_description_' . $post_type->name, '' );
+				if ( ! empty( $custom_description ) ) {
+					$this->cached_description = $this->truncate_description( $custom_description );
 					return $this->cached_description;
 				}
 			}
@@ -688,6 +702,26 @@ class RationalSEO_Frontend {
 		// Return cached value if available.
 		if ( null !== $this->cached_social_image ) {
 			return $this->cached_social_image;
+		}
+
+		// Try custom social image or featured image from the blog page.
+		if ( is_home() ) {
+			$blog_page_id = get_option( 'page_for_posts' );
+			if ( $blog_page_id ) {
+				$meta = $this->get_post_seo_meta( $blog_page_id );
+				if ( ! empty( $meta['og_image'] ) ) {
+					$this->cached_social_image = $meta['og_image'];
+					return $this->cached_social_image;
+				}
+				if ( has_post_thumbnail( $blog_page_id ) ) {
+					$thumbnail_id  = get_post_thumbnail_id( $blog_page_id );
+					$thumbnail_url = wp_get_attachment_image_url( $thumbnail_id, 'large' );
+					if ( $thumbnail_url ) {
+						$this->cached_social_image = $thumbnail_url;
+						return $this->cached_social_image;
+					}
+				}
+			}
 		}
 
 		// Try custom social image override for singular posts/pages.

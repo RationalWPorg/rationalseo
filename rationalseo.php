@@ -3,7 +3,7 @@
  * Plugin Name: RationalSEO
  * Plugin URI: https://rationalwp.com/plugins/rationalseo
  * Description: Technical SEO essentials with zero bloat. No dashboards, analytics, content scoring, or frontend assets.
- * Version: 1.0.2
+ * Version: 1.0.4
  * Author: RationalWP
  * Author URI: https://rationalwp.com
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RATIONALSEO_VERSION', '1.0.2' );
+define( 'RATIONALSEO_VERSION', '1.0.4' );
 define( 'RATIONALSEO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RATIONALSEO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'RATIONALSEO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );

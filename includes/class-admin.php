@@ -207,6 +207,38 @@ class RationalSEO_Admin {
 			'rationalseo_sitemaps',
 			'rationalseo_sitemap_section'
 		);
+
+		// Archives Sections — one per post type with has_archive.
+		$archive_types = get_post_types( array( 'public' => true, 'has_archive' => true ), 'objects' );
+		foreach ( $archive_types as $post_type ) {
+			$section_id = 'rationalseo_archive_' . $post_type->name;
+
+			add_settings_section(
+				$section_id,
+				$post_type->labels->name,
+				array( $this, 'render_section_archive' ),
+				'rationalseo_archives',
+				array( 'post_type' => $post_type->name )
+			);
+
+			add_settings_field(
+				'archive_title_' . $post_type->name,
+				__( 'SEO Title', 'rationalseo' ),
+				array( $this, 'render_field_archive_title' ),
+				'rationalseo_archives',
+				$section_id,
+				array( 'post_type' => $post_type )
+			);
+
+			add_settings_field(
+				'archive_description_' . $post_type->name,
+				__( 'Meta Description', 'rationalseo' ),
+				array( $this, 'render_field_archive_description' ),
+				'rationalseo_archives',
+				$section_id,
+				array( 'post_type' => $post_type )
+			);
+		}
 	}
 
 	/**
@@ -283,6 +315,25 @@ class RationalSEO_Admin {
 			$sanitized['openai_api_key'] = $existing_key;
 		}
 
+		// Handle archive title/description fields.
+		$archive_types = get_post_types( array( 'public' => true, 'has_archive' => true ), 'objects' );
+		foreach ( $archive_types as $post_type ) {
+			$title_key = 'archive_title_' . $post_type->name;
+			$desc_key  = 'archive_description_' . $post_type->name;
+
+			if ( isset( $input[ $title_key ] ) ) {
+				$sanitized[ $title_key ] = sanitize_text_field( $input[ $title_key ] );
+			} elseif ( isset( $old_settings[ $title_key ] ) ) {
+				$sanitized[ $title_key ] = $old_settings[ $title_key ];
+			}
+
+			if ( isset( $input[ $desc_key ] ) ) {
+				$sanitized[ $desc_key ] = sanitize_textarea_field( $input[ $desc_key ] );
+			} elseif ( isset( $old_settings[ $desc_key ] ) ) {
+				$sanitized[ $desc_key ] = $old_settings[ $desc_key ];
+			}
+		}
+
 		// Flush rewrite rules if sitemap settings changed.
 		$sitemap_changed = (
 			( isset( $old_settings['sitemap_enabled'] ) ? $old_settings['sitemap_enabled'] : true ) !== $sanitized['sitemap_enabled']
@@ -336,6 +387,7 @@ class RationalSEO_Admin {
 		$current_tab = $this->get_current_tab();
 		$tabs        = array(
 			'general'  => __( 'General', 'rationalseo' ),
+			'archives' => __( 'Archives', 'rationalseo' ),
 			'social'   => __( 'Social', 'rationalseo' ),
 			'sitemaps' => __( 'Sitemaps', 'rationalseo' ),
 			'import'   => __( 'Import', 'rationalseo' ),
@@ -369,6 +421,13 @@ class RationalSEO_Admin {
 
 					if ( 'social' === $current_tab ) {
 						do_settings_sections( 'rationalseo_social' );
+					} elseif ( 'archives' === $current_tab ) {
+						$archive_types = get_post_types( array( 'public' => true, 'has_archive' => true ), 'objects' );
+						if ( empty( $archive_types ) ) {
+							echo '<p>' . esc_html__( 'No post types with archives found.', 'rationalseo' ) . '</p>';
+						} else {
+							do_settings_sections( 'rationalseo_archives' );
+						}
 					} elseif ( 'sitemaps' === $current_tab ) {
 						do_settings_sections( 'rationalseo_sitemaps' );
 					} else {
@@ -636,6 +695,67 @@ class RationalSEO_Admin {
 			);
 			echo '</p>';
 		}
+	}
+
+	/**
+	 * Render archive section description.
+	 *
+	 * @param array $args Section arguments including 'post_type'.
+	 */
+	public function render_section_archive( $args ) {
+		if ( ! empty( $args['post_type'] ) ) {
+			$archive_url = get_post_type_archive_link( $args['post_type'] );
+			if ( $archive_url ) {
+				printf(
+					'<p>%s <a href="%s" target="_blank" rel="noopener">%s</a></p>',
+					esc_html__( 'Customize SEO settings for this archive.', 'rationalseo' ),
+					esc_url( $archive_url ),
+					esc_html__( 'View archive', 'rationalseo' )
+				);
+			}
+		}
+	}
+
+	/**
+	 * Render archive title field.
+	 *
+	 * @param array $args Field arguments including 'post_type' object.
+	 */
+	public function render_field_archive_title( $args ) {
+		$post_type   = $args['post_type'];
+		$key         = 'archive_title_' . $post_type->name;
+		$value       = $this->settings->get( $key, '' );
+		$separator   = $this->settings->get( 'separator', '|' );
+		$site_name   = $this->settings->get( 'site_name', get_bloginfo( 'name' ) );
+		$placeholder = sprintf( '%s %s %s', $post_type->labels->name, $separator, $site_name );
+		?>
+		<input type="text"
+			name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $key ); ?>]"
+			id="<?php echo esc_attr( $key ); ?>"
+			value="<?php echo esc_attr( $value ); ?>"
+			class="large-text"
+			placeholder="<?php echo esc_attr( $placeholder ); ?>">
+		<p class="description"><?php esc_html_e( 'Leave blank to use the default title pattern.', 'rationalseo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render archive description field.
+	 *
+	 * @param array $args Field arguments including 'post_type' object.
+	 */
+	public function render_field_archive_description( $args ) {
+		$post_type = $args['post_type'];
+		$key       = 'archive_description_' . $post_type->name;
+		$value     = $this->settings->get( $key, '' );
+		?>
+		<textarea
+			name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $key ); ?>]"
+			id="<?php echo esc_attr( $key ); ?>"
+			class="large-text"
+			rows="3"><?php echo esc_textarea( $value ); ?></textarea>
+		<p class="description"><?php esc_html_e( 'Leave blank for no description on the archive page.', 'rationalseo' ); ?></p>
+		<?php
 	}
 
 	/**
