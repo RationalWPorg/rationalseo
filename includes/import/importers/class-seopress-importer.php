@@ -36,10 +36,11 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 	 * @var array
 	 */
 	private $meta_mapping = array(
-		'_seopress_titles_title'    => '_rationalseo_title',
-		'_seopress_titles_desc'     => '_rationalseo_desc',
-		'_seopress_robots_canonical' => '_rationalseo_canonical',
-		'_seopress_social_fb_img'   => '_rationalseo_og_image',
+		'_seopress_titles_title'       => '_rationalseo_title',
+		'_seopress_titles_desc'        => '_rationalseo_desc',
+		'_seopress_robots_canonical'   => '_rationalseo_canonical',
+		'_seopress_social_fb_img'      => '_rationalseo_og_image',
+		'_seopress_analysis_target_kw' => '_rationalseo_focus_keyword',
 	);
 
 	/**
@@ -589,6 +590,11 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 						$value = $this->convert_seopress_variables_for_post( $value, $separator, $post );
 					}
 
+					// Focus keyword: take only the first keyword (SEOPress stores multiple comma-separated).
+					if ( '_seopress_analysis_target_kw' === $sp_key && strpos( $value, ',' ) !== false ) {
+						$value = trim( explode( ',', $value )[0] );
+					}
+
 					if ( ! empty( $value ) ) {
 						$meta_preview['meta'][ $rational_key ] = $value;
 					}
@@ -785,6 +791,11 @@ class RationalSEO_SEOPress_Importer implements RationalSEO_Importer_Interface {
 					// Convert SEOPress variables for title and description fields.
 					if ( in_array( $sp_key, array( '_seopress_titles_title', '_seopress_titles_desc' ), true ) ) {
 						$value = $this->convert_seopress_variables_for_post( $value, $separator, $post );
+					}
+
+					// Focus keyword: take only the first keyword (SEOPress stores multiple comma-separated).
+					if ( '_seopress_analysis_target_kw' === $sp_key && strpos( $value, ',' ) !== false ) {
+						$value = trim( explode( ',', $value )[0] );
 					}
 
 					// Skip if conversion resulted in empty value.

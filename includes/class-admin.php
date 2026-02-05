@@ -136,6 +136,22 @@ class RationalSEO_Admin {
 			'rationalseo_webmaster'
 		);
 
+		// AI Assistant Section.
+		add_settings_section(
+			'rationalseo_ai',
+			__( 'AI Assistant', 'rationalseo' ),
+			array( $this, 'render_section_ai' ),
+			'rationalseo'
+		);
+
+		add_settings_field(
+			'openai_api_key',
+			__( 'OpenAI API Key', 'rationalseo' ),
+			array( $this, 'render_field_openai_api_key' ),
+			'rationalseo',
+			'rationalseo_ai'
+		);
+
 		// Social Section.
 		add_settings_section(
 			'rationalseo_social_section',
@@ -245,8 +261,29 @@ class RationalSEO_Admin {
 			$sanitized['sitemap_exclude_types'] = array_map( 'sanitize_key', $input['sitemap_exclude_types'] );
 		}
 
-		// Flush rewrite rules if sitemap settings changed.
+		// Handle OpenAI API key with encryption.
 		$old_settings = get_option( RationalSEO_Settings::OPTION_NAME, array() );
+		$existing_key = isset( $old_settings['openai_api_key'] ) ? $old_settings['openai_api_key'] : '';
+
+		if ( ! empty( $input['openai_api_key_clear'] ) ) {
+			// Clear checkbox is checked - remove the key.
+			$sanitized['openai_api_key'] = '';
+		} elseif ( isset( $input['openai_api_key'] ) ) {
+			$new_key = trim( $input['openai_api_key'] );
+			// Check if it's placeholder bullets (all bullet characters).
+			if ( '' === $new_key || preg_match( '/^[\x{2022}\x{25CF}\x{25A0}•]+$/u', $new_key ) ) {
+				// Keep existing key.
+				$sanitized['openai_api_key'] = $existing_key;
+			} else {
+				// Encrypt and store new key.
+				$sanitized['openai_api_key'] = $this->settings->encrypt_value( $new_key );
+			}
+		} else {
+			// Keep existing key if field not submitted.
+			$sanitized['openai_api_key'] = $existing_key;
+		}
+
+		// Flush rewrite rules if sitemap settings changed.
 		$sitemap_changed = (
 			( isset( $old_settings['sitemap_enabled'] ) ? $old_settings['sitemap_enabled'] : true ) !== $sanitized['sitemap_enabled']
 		);
@@ -383,6 +420,50 @@ class RationalSEO_Admin {
 		echo '<p>' . esc_html__( 'Enter verification codes for webmaster tools.', 'rationalseo' ) . '</p>';
 	}
 
+	/**
+	 * Render AI Assistant section description.
+	 */
+	public function render_section_ai() {
+		echo '<p>' . esc_html__( 'Configure AI-powered features for content optimization.', 'rationalseo' ) . '</p>';
+	}
+
+	/**
+	 * Render OpenAI API Key field.
+	 */
+	public function render_field_openai_api_key() {
+		$encrypted_key = $this->settings->get( 'openai_api_key', '' );
+		$has_key       = ! empty( $encrypted_key );
+		?>
+		<input type="password"
+			name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[openai_api_key]"
+			id="openai_api_key"
+			value="<?php echo $has_key ? '••••••••••••••••' : ''; ?>"
+			class="regular-text"
+			placeholder="sk-..."
+			autocomplete="off">
+		<?php if ( $has_key ) : ?>
+			<span class="rationalseo-api-status rationalseo-api-configured">
+				<?php esc_html_e( 'API key is configured', 'rationalseo' ); ?>
+			</span>
+			<br><br>
+			<label>
+				<input type="checkbox"
+					name="<?php echo esc_attr( RationalSEO_Settings::OPTION_NAME ); ?>[openai_api_key_clear]"
+					value="1">
+				<?php esc_html_e( 'Clear API key', 'rationalseo' ); ?>
+			</label>
+		<?php endif; ?>
+		<p class="description">
+			<?php
+			printf(
+				/* translators: %s: Link to OpenAI API keys page */
+				esc_html__( 'Enter your API key from %s to enable AI-powered keyword suggestions and description generation.', 'rationalseo' ),
+				'<a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">OpenAI</a>'
+			);
+			?>
+		</p>
+		<?php
+	}
 
 	/**
 	 * Render Site Type field.

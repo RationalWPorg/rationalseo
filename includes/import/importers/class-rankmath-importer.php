@@ -40,6 +40,7 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 		'rank_math_description'   => '_rationalseo_desc',
 		'rank_math_canonical_url' => '_rationalseo_canonical',
 		'rank_math_facebook_image' => '_rationalseo_og_image',
+		'rank_math_focus_keyword' => '_rationalseo_focus_keyword',
 	);
 
 	/**
@@ -671,6 +672,11 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 						$value = $this->convert_rankmath_variables_for_post( $value, $separator, $post );
 					}
 
+					// Focus keyword: take only the first keyword (Rank Math stores multiple comma-separated).
+					if ( 'rank_math_focus_keyword' === $rm_key && strpos( $value, ',' ) !== false ) {
+						$value = trim( explode( ',', $value )[0] );
+					}
+
 					if ( ! empty( $value ) ) {
 						$meta_preview['meta'][ $rational_key ] = $value;
 					}
@@ -869,6 +875,11 @@ class RationalSEO_RankMath_Importer implements RationalSEO_Importer_Interface {
 					// Convert Rank Math variables for title and description fields.
 					if ( in_array( $rm_key, array( 'rank_math_title', 'rank_math_description' ), true ) ) {
 						$value = $this->convert_rankmath_variables_for_post( $value, $separator, $post );
+					}
+
+					// Focus keyword: take only the first keyword (Rank Math stores multiple comma-separated).
+					if ( 'rank_math_focus_keyword' === $rm_key && strpos( $value, ',' ) !== false ) {
+						$value = trim( explode( ',', $value )[0] );
 					}
 
 					// Skip if conversion resulted in empty value.

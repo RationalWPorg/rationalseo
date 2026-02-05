@@ -52,6 +52,7 @@ class RationalSEO_Settings {
 			'sitemap_enabled'        => true,
 			'sitemap_max_age'        => 0,
 			'sitemap_exclude_types'  => array(),
+			'openai_api_key'         => '',
 		);
 	}
 
@@ -140,5 +141,98 @@ class RationalSEO_Settings {
 	 */
 	public function refresh() {
 		$this->settings = $this->load_settings();
+	}
+
+	/**
+	 * Encrypt a value using AES-256-CBC.
+	 *
+	 * @param string $value The value to encrypt.
+	 * @return string Base64-encoded IV + ciphertext, or empty string on failure.
+	 */
+	public function encrypt_value( $value ) {
+		if ( empty( $value ) ) {
+			return '';
+		}
+
+		$method = 'aes-256-cbc';
+		$key    = hash( 'sha256', wp_salt( 'auth' ), true );
+		$iv     = openssl_random_pseudo_bytes( openssl_cipher_iv_length( $method ) );
+
+		$ciphertext = openssl_encrypt( $value, $method, $key, OPENSSL_RAW_DATA, $iv );
+		if ( false === $ciphertext ) {
+			return '';
+		}
+
+		// Prepend IV to ciphertext and base64 encode.
+		return base64_encode( $iv . $ciphertext );
+	}
+
+	/**
+	 * Decrypt a value encrypted with encrypt_value().
+	 *
+	 * Handles both encrypted values (base64-encoded IV + ciphertext) and
+	 * legacy plain text values that were stored before encryption was added.
+	 *
+	 * @param string $encrypted Base64-encoded IV + ciphertext, or plain text.
+	 * @return string Decrypted value, or empty string on failure.
+	 */
+	public function decrypt_value( $encrypted ) {
+		if ( empty( $encrypted ) ) {
+			return '';
+		}
+
+		// Check if this looks like an OpenAI API key (plain text, not encrypted).
+		// OpenAI keys start with 'sk-' (or 'sk-proj-', 'sk-org-', etc.)
+		if ( preg_match( '/^sk-[a-zA-Z0-9_-]+$/', $encrypted ) ) {
+			return $encrypted;
+		}
+
+		$data = base64_decode( $encrypted, true );
+		if ( false === $data ) {
+			// Not valid base64 - can't decrypt, return empty.
+			return '';
+		}
+
+		$method    = 'aes-256-cbc';
+		$key       = hash( 'sha256', wp_salt( 'auth' ), true );
+		$iv_length = openssl_cipher_iv_length( $method );
+
+		// If decoded data is too short to contain IV + ciphertext, can't decrypt.
+		if ( strlen( $data ) < $iv_length + 1 ) {
+			return '';
+		}
+
+		$iv         = substr( $data, 0, $iv_length );
+		$ciphertext = substr( $data, $iv_length );
+
+		$decrypted = openssl_decrypt( $ciphertext, $method, $key, OPENSSL_RAW_DATA, $iv );
+		if ( false === $decrypted ) {
+			return '';
+		}
+
+		// Only return the decrypted value if it looks like a valid API key.
+		// This prevents returning garbage if decryption key changed.
+		if ( preg_match( '/^sk-[a-zA-Z0-9_-]+$/', $decrypted ) ) {
+			return $decrypted;
+		}
+
+		// Decryption produced something that doesn't look like an API key.
+		// Return empty so user is prompted to re-enter.
+		return '';
+	}
+
+	/**
+	 * Get a setting value and decrypt it if it's an encrypted field.
+	 *
+	 * @param string $key Setting key.
+	 * @return string Decrypted value, or empty string if not set.
+	 */
+	public function get_decrypted( $key ) {
+		$encrypted = $this->get( $key, '' );
+		if ( empty( $encrypted ) ) {
+			return '';
+		}
+
+		return $this->decrypt_value( $encrypted );
 	}
 }

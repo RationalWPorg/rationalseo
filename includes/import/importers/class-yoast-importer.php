@@ -41,6 +41,7 @@ class RationalSEO_Yoast_Importer implements RationalSEO_Importer_Interface {
 		'_yoast_wpseo_canonical'          => '_rationalseo_canonical',
 		'_yoast_wpseo_meta-robots-noindex' => '_rationalseo_noindex',
 		'_yoast_wpseo_opengraph-image'    => '_rationalseo_og_image',
+		'_yoast_wpseo_focuskw'            => '_rationalseo_focus_keyword',
 	);
 
 	/**

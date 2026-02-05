@@ -23,11 +23,12 @@ class RationalSEO_Meta_Box {
 	/**
 	 * Meta keys used by this plugin.
 	 */
-	const META_TITLE     = '_rationalseo_title';
-	const META_DESC      = '_rationalseo_desc';
-	const META_CANONICAL = '_rationalseo_canonical';
-	const META_NOINDEX   = '_rationalseo_noindex';
-	const META_OG_IMAGE  = '_rationalseo_og_image';
+	const META_TITLE         = '_rationalseo_title';
+	const META_DESC          = '_rationalseo_desc';
+	const META_CANONICAL     = '_rationalseo_canonical';
+	const META_NOINDEX       = '_rationalseo_noindex';
+	const META_OG_IMAGE      = '_rationalseo_og_image';
+	const META_FOCUS_KEYWORD = '_rationalseo_focus_keyword';
 
 	/**
 	 * Nonce action for security.
@@ -107,6 +108,27 @@ class RationalSEO_Meta_Box {
 			array(),
 			RATIONALSEO_VERSION
 		);
+
+		wp_enqueue_script(
+			'rationalseo-meta-box',
+			RATIONALSEO_PLUGIN_URL . 'assets/js/meta-box.js',
+			array( 'wp-data' ),
+			RATIONALSEO_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'rationalseo-meta-box',
+			'rationalseoMetaBox',
+			array(
+				'keywordId' => 'rationalseo_focus_keyword',
+				'titleId'   => 'rationalseo_title',
+				'descId'    => 'rationalseo_desc',
+				'hasApiKey' => ! empty( $this->settings->get_decrypted( 'openai_api_key' ) ),
+				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+				'nonce'     => wp_create_nonce( 'rationalseo_meta_box' ),
+			)
+		);
 	}
 
 	/**
@@ -116,11 +138,12 @@ class RationalSEO_Meta_Box {
 	 */
 	public function render_meta_box( $post ) {
 		// Get existing values.
-		$title     = get_post_meta( $post->ID, self::META_TITLE, true );
-		$desc      = get_post_meta( $post->ID, self::META_DESC, true );
-		$canonical = get_post_meta( $post->ID, self::META_CANONICAL, true );
-		$noindex   = get_post_meta( $post->ID, self::META_NOINDEX, true );
-		$og_image  = get_post_meta( $post->ID, self::META_OG_IMAGE, true );
+		$title         = get_post_meta( $post->ID, self::META_TITLE, true );
+		$desc          = get_post_meta( $post->ID, self::META_DESC, true );
+		$canonical     = get_post_meta( $post->ID, self::META_CANONICAL, true );
+		$noindex       = get_post_meta( $post->ID, self::META_NOINDEX, true );
+		$og_image      = get_post_meta( $post->ID, self::META_OG_IMAGE, true );
+		$focus_keyword = get_post_meta( $post->ID, self::META_FOCUS_KEYWORD, true );
 
 		// Calculate default title for placeholder.
 		$separator  = $this->settings->get( 'separator', '|' );
@@ -148,6 +171,46 @@ class RationalSEO_Meta_Box {
 			</div>
 
 			<div class="rationalseo-field">
+				<label for="rationalseo_focus_keyword">
+					<?php esc_html_e( 'Focus Keyword', 'rationalseo' ); ?>
+				</label>
+				<div class="rationalseo-input-with-button">
+					<input type="text"
+						id="rationalseo_focus_keyword"
+						name="rationalseo_focus_keyword"
+						value="<?php echo esc_attr( $focus_keyword ); ?>"
+						class="large-text"
+						placeholder="<?php esc_attr_e( 'Enter your target keyword or phrase', 'rationalseo' ); ?>">
+					<button type="button" id="rationalseo-suggest-keyword" class="button rationalseo-ai-button" style="display: none;">
+						<span class="rationalseo-ai-button-text"><?php esc_html_e( 'Suggest', 'rationalseo' ); ?></span>
+						<span class="rationalseo-ai-button-spinner spinner"></span>
+					</button>
+				</div>
+				<p class="description">
+					<?php esc_html_e( 'The main keyword you want this content to rank for.', 'rationalseo' ); ?>
+				</p>
+
+				<div id="rationalseo-keyword-checks" class="rationalseo-keyword-checks" style="display: none;">
+					<div id="rationalseo-check-title" class="rationalseo-check">
+						<span class="rationalseo-check-icon"></span>
+						<span class="rationalseo-check-label"><?php esc_html_e( 'In SEO title', 'rationalseo' ); ?></span>
+					</div>
+					<div id="rationalseo-check-desc" class="rationalseo-check">
+						<span class="rationalseo-check-icon"></span>
+						<span class="rationalseo-check-label"><?php esc_html_e( 'In meta description', 'rationalseo' ); ?></span>
+					</div>
+					<div id="rationalseo-check-first-paragraph" class="rationalseo-check">
+						<span class="rationalseo-check-icon"></span>
+						<span class="rationalseo-check-label"><?php esc_html_e( 'In first paragraph', 'rationalseo' ); ?></span>
+					</div>
+					<div id="rationalseo-check-slug" class="rationalseo-check">
+						<span class="rationalseo-check-icon"></span>
+						<span class="rationalseo-check-label"><?php esc_html_e( 'In URL slug', 'rationalseo' ); ?></span>
+					</div>
+				</div>
+			</div>
+
+			<div class="rationalseo-field">
 				<label for="rationalseo_desc">
 					<?php esc_html_e( 'Meta Description', 'rationalseo' ); ?>
 				</label>
@@ -157,9 +220,15 @@ class RationalSEO_Meta_Box {
 					rows="3"
 					class="large-text"
 					placeholder="<?php esc_html_e( 'Enter a description for search results...', 'rationalseo' ); ?>"><?php echo esc_textarea( $desc ); ?></textarea>
-				<p class="description">
-					<?php esc_html_e( 'Leave empty to use the excerpt or auto-generate from content.', 'rationalseo' ); ?>
-				</p>
+				<div class="rationalseo-field-footer">
+					<p class="description">
+						<?php esc_html_e( 'Leave empty to use the excerpt or auto-generate from content.', 'rationalseo' ); ?>
+					</p>
+					<button type="button" id="rationalseo-generate-description" class="button rationalseo-ai-button" style="display: none;">
+						<span class="rationalseo-ai-button-text"><?php esc_html_e( 'Generate', 'rationalseo' ); ?></span>
+						<span class="rationalseo-ai-button-spinner spinner"></span>
+					</button>
+				</div>
 			</div>
 
 			<details class="rationalseo-advanced">
@@ -256,6 +325,17 @@ class RationalSEO_Meta_Box {
 			update_post_meta( $post_id, self::META_TITLE, $title );
 		} else {
 			delete_post_meta( $post_id, self::META_TITLE );
+		}
+
+		// Sanitize and save Focus Keyword.
+		$focus_keyword = isset( $_POST['rationalseo_focus_keyword'] )
+			? sanitize_text_field( wp_unslash( $_POST['rationalseo_focus_keyword'] ) )
+			: '';
+
+		if ( ! empty( $focus_keyword ) ) {
+			update_post_meta( $post_id, self::META_FOCUS_KEYWORD, $focus_keyword );
+		} else {
+			delete_post_meta( $post_id, self::META_FOCUS_KEYWORD );
 		}
 
 		// Sanitize and save Meta Description.
