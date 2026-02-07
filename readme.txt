@@ -98,6 +98,28 @@ Navigate to Settings > Rational SEO in your WordPress admin. Settings are organi
 2. Post editor meta box for customizing SEO per post
 3. XML sitemap output
 
+== External Services ==
+
+This plugin connects to the following external services:
+
+= RationalWP Plugin Directory =
+
+This plugin fetches a list of available RationalWP plugins from [rationalwp.com](https://rationalwp.com/) to display in the WordPress admin menu. Only the menu file version number is sent as a cache-busting query parameter. No user data is transmitted. The response is cached locally for 24 hours.
+
+* Service URL: [https://rationalwp.com/plugins.json](https://rationalwp.com/plugins.json)
+* Terms of Service: [https://rationalwp.com/terms/](https://rationalwp.com/terms/)
+* Privacy Policy: [https://rationalwp.com/privacy/](https://rationalwp.com/privacy/)
+
+= OpenAI API (optional) =
+
+This plugin provides optional AI-powered SEO suggestions using the [OpenAI API](https://openai.com/). When a site administrator configures an OpenAI API key in Settings > Rational SEO > General, users can click "Suggest" or "Generate" buttons in the post editor to receive AI-generated focus keywords, SEO titles, and meta descriptions.
+
+Data is only sent when a user explicitly clicks an AI suggestion button. The data sent includes the post title and up to 2000 characters of post content (stripped of HTML), along with the user's own API key for authentication. No data is sent automatically or in the background.
+
+* Service URL: [https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)
+* Terms of Use: [https://openai.com/policies/terms-of-use/](https://openai.com/policies/terms-of-use/)
+* Privacy Policy: [https://openai.com/policies/privacy-policy/](https://openai.com/policies/privacy-policy/)
+
 == Changelog ==
 
 = 1.0.0 =

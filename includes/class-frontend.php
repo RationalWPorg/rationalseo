@@ -883,7 +883,7 @@ class RationalSEO_Frontend {
 		// Output the JSON-LD.
 		printf(
 			"<script type=\"application/ld+json\">\n%s\n</script>\n",
-			wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+			wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG )
 		);
 	}
 }

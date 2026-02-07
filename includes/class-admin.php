@@ -364,6 +364,25 @@ class RationalSEO_Admin {
 			array(),
 			RATIONALSEO_VERSION
 		);
+
+		// Enqueue settings JS on non-import tabs.
+		if ( 'import' !== $this->get_current_tab() ) {
+			wp_enqueue_script(
+				'rationalseo-admin-settings',
+				RATIONALSEO_PLUGIN_URL . 'assets/js/admin-settings.js',
+				array( 'jquery' ),
+				RATIONALSEO_VERSION,
+				true
+			);
+
+			wp_localize_script(
+				'rationalseo-admin-settings',
+				'rationalseoAdmin',
+				array(
+					'page' => 'rationalseo',
+				)
+			);
+		}
 	}
 
 	/**
@@ -440,28 +459,6 @@ class RationalSEO_Admin {
 			<?php endif; ?>
 		</div>
 
-		<?php if ( 'import' !== $current_tab ) : ?>
-		<script type="text/javascript">
-		jQuery(document).ready(function($) {
-			// Auto-hide settings saved message after 4 seconds.
-			var $msg = $('.rationalseo-settings-saved');
-			if ($msg.length) {
-				setTimeout(function() {
-					$msg.fadeOut(300);
-				}, 4000);
-
-				// Clean URL without page reload.
-				var newUrl = window.location.pathname + '?page=rationalseo';
-				var urlParams = new URLSearchParams(window.location.search);
-				var tab = urlParams.get('tab');
-				if (tab) {
-					newUrl += '&tab=' + tab;
-				}
-				window.history.replaceState({}, '', newUrl);
-			}
-		});
-		</script>
-		<?php endif; ?>
 		<?php
 	}
 
