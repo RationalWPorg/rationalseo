@@ -60,9 +60,24 @@ Rational SEO rigorously rejects features that do not directly influence search e
 
 * Meta box on all public post types
 * Custom SEO title and description fields
+* Focus keyword field with real-time presence indicators (title, description, first paragraph, URL slug)
 * Noindex toggle per post
 * Canonical URL override
 * Social image override
+* Taxonomy term SEO fields (title, description, noindex, canonical)
+
+**Post Type Archives**
+
+* Custom SEO title and description for each post type archive
+* Configure via Settings > Rational SEO > Archives tab
+
+**AI Assistant (optional)**
+
+* AI-powered focus keyword suggestions
+* AI-generated SEO titles and meta descriptions
+* One-click "Suggest All" for keyword, title, and description together
+* Uses OpenAI GPT-4o-mini (requires your own API key)
+* Data sent only when you click — never in the background
 
 == Installation ==
 
@@ -90,7 +105,7 @@ Go to Settings > Rational SEO > Import tab. Rational SEO can import SEO titles, 
 
 = Where are the settings? =
 
-Navigate to Settings > Rational SEO in your WordPress admin. Settings are organized into four tabs: General, Social, Sitemaps, and Import.
+Navigate to Settings > Rational SEO in your WordPress admin. Settings are organized into tabs: General, Social, Sitemaps, Archives, and Import.
 
 == Screenshots ==
 
@@ -122,6 +137,26 @@ Data is only sent when a user explicitly clicks an AI suggestion button. The dat
 
 == Changelog ==
 
+= 1.0.4 =
+* Fixed: Readme stable tag now matches plugin version
+
+= 1.0.3 =
+* Fixed: Extracted import inline script to enqueued external JS file
+* Fixed: Addressed WordPress.org plugin review feedback
+
+= 1.0.2 =
+* Added: Custom SEO title and description for post type archives (new Archives tab)
+
+= 1.0.1 =
+* Added: Focus keyword field for posts and taxonomy terms
+* Added: Real-time keyword presence indicators (title, description, first paragraph, URL slug)
+* Added: AI-powered keyword suggestions, title generation, and description generation
+* Added: One-click "Suggest All" for keyword, title, and description together
+* Added: Encrypted OpenAI API key storage
+* Added: Focus keyword import support for Yoast, Rank Math, AIOSEO, and SEOPress
+* Added: Auto-generated descriptions prefer sentences containing the focus keyword
+* Fixed: API key decryption handles WordPress salt changes gracefully
+
 = 1.0.0 =
 * Initial release
 * Meta tags output (title, description, robots, canonical)
@@ -129,9 +164,22 @@ Data is only sent when a user explicitly clicks an AI suggestion button. The dat
 * JSON-LD structured data with @graph format
 * XML sitemaps with caching and content freshness filtering
 * Post editor meta box integration
+* Taxonomy term SEO fields
 * Import tools for Yoast, Rank Math, AIOSEO, and SEOPress
 
 == Upgrade Notice ==
+
+= 1.0.4 =
+Readme and version sync fix.
+
+= 1.0.3 =
+Plugin review compliance fixes.
+
+= 1.0.2 =
+New Archives tab for post type archive SEO settings.
+
+= 1.0.1 =
+Focus keyword field, AI-powered SEO suggestions, and keyword import support.
 
 = 1.0.0 =
 Initial release of Rational SEO.
