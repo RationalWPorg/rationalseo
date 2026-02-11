@@ -1,0 +1,42 @@
+# Distribution ignore file
+# Files and directories listed here will be excluded from the WordPress.org distribution
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Development files
+.claude
+CLAUDE.md
+.phpunit.result.cache
+phpunit.xml
+build.sh
+.distignore
+
+# WordPress.org SVN assets (uploaded separately to SVN assets/ directory)
+.wordpress-org
+
+# Dependencies (dev only)
+composer.json
+composer.lock
+vendor
+
+# Test files
+tests
+
+# IDE and OS files
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Node.js (if added later)
+node_modules
+package.json
+package-lock.json
+
+# Coverage reports
+coverage
