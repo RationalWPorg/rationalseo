@@ -4,7 +4,7 @@ Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,12 @@ Data is only sent when a user explicitly clicks an AI suggestion button. The dat
 
 == Changelog ==
 
+= 1.0.5 =
+* Improved: "Suggest All" now builds title and description around existing focus keyword when one is set
+* Improved: AI response parsing handles markdown code fences from API
+* Fixed: Sitemap URLs no longer redirect with trailing slash (breaks XML parsing)
+* Fixed: Sitemaps now work even when rewrite rules are not flushed
+
 = 1.0.4 =
 * Fixed: Readme stable tag now matches plugin version
 
@@ -168,6 +174,9 @@ Data is only sent when a user explicitly clicks an AI suggestion button. The dat
 * Import tools for Yoast, Rank Math, AIOSEO, and SEOPress
 
 == Upgrade Notice ==
+
+= 1.0.5 =
+AI "Suggest All" improvements and sitemap redirect fix.
 
 = 1.0.4 =
 Readme and version sync fix.

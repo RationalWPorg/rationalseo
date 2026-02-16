@@ -416,6 +416,7 @@
 
 		var content = getEditorContent();
 		var title = getPostTitle();
+		var keyword = keywordField ? keywordField.value.trim() : '';
 
 		if ( ! content && ! title ) {
 			alert( 'Please add some content or a title first.' );
@@ -429,6 +430,7 @@
 		formData.append( 'nonce', config.nonce );
 		formData.append( 'content', content );
 		formData.append( 'title', title );
+		formData.append( 'keyword', keyword );
 
 		fetch( config.ajaxUrl, {
 			method: 'POST',

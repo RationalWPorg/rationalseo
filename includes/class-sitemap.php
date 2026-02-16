@@ -58,6 +58,7 @@ class RationalSEO_Sitemap {
 		add_action( 'init', array( $this, 'register_rewrite_rules' ) );
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
 		add_action( 'template_redirect', array( $this, 'handle_sitemap_request' ) );
+		add_filter( 'redirect_canonical', array( $this, 'prevent_sitemap_redirect' ) );
 		add_action( 'rationalseo_rebuild_sitemap', array( $this, 'rebuild_sitemap_cache' ), 10, 2 );
 
 		// Clear cache when posts are updated.
@@ -97,10 +98,51 @@ class RationalSEO_Sitemap {
 	}
 
 	/**
+	 * Prevent WordPress from adding a trailing slash to sitemap URLs.
+	 *
+	 * WordPress redirect_canonical() adds trailing slashes to URLs by default,
+	 * which breaks sitemap.xml by redirecting to sitemap.xml/.
+	 *
+	 * @since 1.0.5
+	 *
+	 * @param string $redirect_url The redirect URL.
+	 * @return string|false The redirect URL, or false to cancel the redirect.
+	 */
+	public function prevent_sitemap_redirect( $redirect_url ) {
+		if ( get_query_var( 'rationalseo_sitemap' ) ) {
+			return false;
+		}
+
+		// Fallback: check request URI directly in case rewrite rules are not flushed.
+		$path = trim( wp_parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH ), '/' );
+		if ( preg_match( '/^sitemap(-[a-z0-9_-]+)?\.xml$/', $path ) ) {
+			return false;
+		}
+
+		return $redirect_url;
+	}
+
+	/**
 	 * Handle sitemap request.
 	 */
 	public function handle_sitemap_request() {
 		$sitemap = get_query_var( 'rationalseo_sitemap' );
+
+		// Fallback: match request URI directly if rewrite rules did not set query vars.
+		if ( empty( $sitemap ) ) {
+			$path = trim( wp_parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH ), '/' );
+
+			if ( 'sitemap.xml' === $path ) {
+				$sitemap = 'index';
+			} elseif ( preg_match( '/^sitemap-([a-z0-9_-]+)-?(\d*)\.xml$/', $path, $matches ) ) {
+				$sitemap = $matches[1];
+				set_query_var( 'rationalseo_sitemap_page', ! empty( $matches[2] ) ? (int) $matches[2] : 1 );
+			}
+
+			if ( ! empty( $sitemap ) ) {
+				set_query_var( 'rationalseo_sitemap', $sitemap );
+			}
+		}
 
 		if ( empty( $sitemap ) ) {
 			return;

@@ -231,6 +231,7 @@ class RationalSEO_AI_Assistant {
 
 		$content = isset( $_POST['content'] ) ? wp_kses_post( wp_unslash( $_POST['content'] ) ) : '';
 		$title   = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+		$keyword = isset( $_POST['keyword'] ) ? sanitize_text_field( wp_unslash( $_POST['keyword'] ) ) : '';
 
 		if ( empty( $content ) && empty( $title ) ) {
 			wp_send_json_error( array( 'message' => __( 'No content to analyze.', 'rationalseo' ) ) );
@@ -245,10 +246,18 @@ class RationalSEO_AI_Assistant {
 			$plain_content = substr( $plain_content, 0, 2000 ) . '...';
 		}
 
-		$prompt = "Analyze the following content and provide all three of these SEO elements:\n\n";
-		$prompt .= "1. A focus keyword or keyphrase (2-4 words) that this content should rank for\n";
-		$prompt .= "2. A compelling SEO title (50-60 characters) — do NOT include a site name or separator\n";
-		$prompt .= "3. A meta description (150-160 characters) that includes the keyword naturally\n\n";
+		if ( ! empty( $keyword ) ) {
+			$prompt  = "You are given a focus keyword and content. Generate an SEO title and meta description that are built around this focus keyword.\n\n";
+			$prompt .= "IMPORTANT: The focus keyword is: \"{$keyword}\"\n";
+			$prompt .= "- The SEO title (50-60 characters) MUST naturally include the focus keyword. Do NOT include a site name or separator.\n";
+			$prompt .= "- The meta description (150-160 characters) MUST naturally include the focus keyword.\n\n";
+		} else {
+			$prompt  = "Analyze the following content and provide all three of these SEO elements:\n\n";
+			$prompt .= "1. First, determine a focus keyword or keyphrase (2-4 words) that this content should rank for\n";
+			$prompt .= "2. Then, build a compelling SEO title (50-60 characters) that naturally includes that keyword — do NOT include a site name or separator\n";
+			$prompt .= "3. Then, write a meta description (150-160 characters) that naturally includes that keyword\n\n";
+			$prompt .= "The title and description MUST be based on and include the chosen keyword.\n\n";
+		}
 
 		if ( ! empty( $title ) ) {
 			$prompt .= "Post title: {$title}\n\n";
@@ -256,6 +265,7 @@ class RationalSEO_AI_Assistant {
 
 		$prompt .= "Content: {$plain_content}\n\n";
 		$prompt .= 'Respond with ONLY valid JSON in this exact format: {"keyword":"...","title":"...","description":"..."}';
+		$prompt .= "\nDo NOT wrap the JSON in markdown code fences or backticks. Output raw JSON only.";
 
 		$response = $this->call_openai( $prompt, 300 );
 
@@ -263,14 +273,27 @@ class RationalSEO_AI_Assistant {
 			wp_send_json_error( array( 'message' => $response->get_error_message() ) );
 		}
 
-		$data = json_decode( trim( $response ), true );
+		// Strip markdown code fences if present.
+		$clean = trim( $response );
+		if ( preg_match( '/```(?:json)?\s*([\s\S]*?)```/', $clean, $matches ) ) {
+			$clean = trim( $matches[1] );
+		}
 
-		if ( ! is_array( $data ) || empty( $data['keyword'] ) || empty( $data['title'] ) || empty( $data['description'] ) ) {
+		$data = json_decode( $clean, true );
+
+		if ( ! is_array( $data ) || empty( $data['title'] ) || empty( $data['description'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid response from API.', 'rationalseo' ) ) );
+		}
+
+		// Use the provided keyword if one was given, otherwise use the AI-generated one.
+		$result_keyword = ! empty( $keyword ) ? $keyword : ( isset( $data['keyword'] ) ? sanitize_text_field( $data['keyword'] ) : '' );
+
+		if ( empty( $result_keyword ) ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid response from API.', 'rationalseo' ) ) );
 		}
 
 		wp_send_json_success( array(
-			'keyword'     => sanitize_text_field( $data['keyword'] ),
+			'keyword'     => $result_keyword,
 			'title'       => sanitize_text_field( $data['title'] ),
 			'description' => sanitize_text_field( $data['description'] ),
 		) );
