@@ -13,6 +13,7 @@ CLAUDE.md
 phpunit.xml
 build.sh
 .distignore
+*.zip
 
 # WordPress.org SVN assets (uploaded separately to SVN assets/ directory)
 .wordpress-org
