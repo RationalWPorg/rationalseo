@@ -114,7 +114,8 @@ class RationalSEO_Sitemap {
 		}
 
 		// Fallback: check request URI directly in case rewrite rules are not flushed.
-		$path = trim( wp_parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH ), '/' );
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$path        = trim( wp_parse_url( $request_uri, PHP_URL_PATH ), '/' );
 		if ( preg_match( '/^sitemap(-[a-z0-9_-]+)?\.xml$/', $path ) ) {
 			return false;
 		}
@@ -130,7 +131,8 @@ class RationalSEO_Sitemap {
 
 		// Fallback: match request URI directly if rewrite rules did not set query vars.
 		if ( empty( $sitemap ) ) {
-			$path = trim( wp_parse_url( $_SERVER['REQUEST_URI'], PHP_URL_PATH ), '/' );
+			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+			$path        = trim( wp_parse_url( $request_uri, PHP_URL_PATH ), '/' );
 
 			if ( 'sitemap.xml' === $path ) {
 				$sitemap = 'index';
