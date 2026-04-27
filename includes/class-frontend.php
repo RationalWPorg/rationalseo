@@ -42,11 +42,11 @@ class RationalSEO_Frontend {
 	private $cached_canonical = null;
 
 	/**
-	 * Cached social image URL.
+	 * Cached social image data.
 	 *
-	 * @var string|null
+	 * @var array|null
 	 */
-	private $cached_social_image = null;
+	private $cached_social_image_data = null;
 
 	/**
 	 * Cached post meta for current context.
@@ -324,6 +324,25 @@ class RationalSEO_Frontend {
 	private function get_description() {
 		// Return cached value if available.
 		if ( null !== $this->cached_description ) {
+			return $this->cached_description;
+		}
+
+		/**
+		 * Short-circuit the meta description resolution.
+		 *
+		 * Return non-null to short-circuit default resolution; return null to fall
+		 * through to internal logic. Returning an empty string '' is a valid
+		 * short-circuit meaning "explicitly no description" — output_description()
+		 * skips the tag when description is empty.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string|null $pre     Return a string to short-circuit, or null to continue.
+		 * @param array       $context Standard context array from build_context().
+		 */
+		$pre = apply_filters( 'rationalseo_meta_description', null, $this->build_context() );
+		if ( null !== $pre ) {
+			$this->cached_description = (string) $pre;
 			return $this->cached_description;
 		}
 
@@ -631,13 +650,13 @@ class RationalSEO_Frontend {
 	 * Output Open Graph meta tags.
 	 */
 	private function output_open_graph() {
-		$locale    = get_locale();
-		$og_type   = is_singular() && ! is_front_page() ? 'article' : 'website';
-		$title     = $this->get_title();
-		$desc      = $this->get_description();
-		$url       = $this->get_canonical();
-		$site_name = $this->settings->get( 'site_name', get_bloginfo( 'name' ) );
-		$image     = $this->get_social_image();
+		$locale     = get_locale();
+		$og_type    = is_singular() && ! is_front_page() ? 'article' : 'website';
+		$title      = $this->get_title();
+		$desc       = $this->get_description();
+		$url        = $this->get_canonical();
+		$site_name  = $this->settings->get( 'site_name', get_bloginfo( 'name' ) );
+		$image_data = $this->get_social_image_data();
 
 		printf( "<meta property=\"og:locale\" content=\"%s\" />\n", esc_attr( $locale ) );
 		printf( "<meta property=\"og:type\" content=\"%s\" />\n", esc_attr( $og_type ) );
@@ -658,8 +677,28 @@ class RationalSEO_Frontend {
 			printf( "<meta property=\"og:site_name\" content=\"%s\" />\n", esc_attr( $site_name ) );
 		}
 
-		if ( $image ) {
-			printf( "<meta property=\"og:image\" content=\"%s\" />\n", esc_url( $image ) );
+		if ( ! empty( $image_data['url'] ) ) {
+			printf( "<meta property=\"og:image\" content=\"%s\" />\n", esc_url( $image_data['url'] ) );
+
+			if ( ! empty( $image_data['secure_url'] ) ) {
+				printf( "<meta property=\"og:image:secure_url\" content=\"%s\" />\n", esc_url( $image_data['secure_url'] ) );
+			}
+
+			if ( ! empty( $image_data['type'] ) ) {
+				printf( "<meta property=\"og:image:type\" content=\"%s\" />\n", esc_attr( $image_data['type'] ) );
+			}
+
+			if ( $image_data['width'] > 0 ) {
+				printf( "<meta property=\"og:image:width\" content=\"%d\" />\n", (int) $image_data['width'] );
+			}
+
+			if ( $image_data['height'] > 0 ) {
+				printf( "<meta property=\"og:image:height\" content=\"%d\" />\n", (int) $image_data['height'] );
+			}
+
+			if ( ! empty( $image_data['alt'] ) ) {
+				printf( "<meta property=\"og:image:alt\" content=\"%s\" />\n", esc_attr( $image_data['alt'] ) );
+			}
 		}
 	}
 
@@ -667,10 +706,10 @@ class RationalSEO_Frontend {
 	 * Output Twitter Card meta tags.
 	 */
 	private function output_twitter_cards() {
-		$card_type = $this->settings->get( 'twitter_card_type', 'summary_large_image' );
-		$title     = $this->get_title();
-		$desc      = $this->get_description();
-		$image     = $this->get_social_image();
+		$card_type  = $this->settings->get( 'twitter_card_type', 'summary_large_image' );
+		$title      = $this->get_title();
+		$desc       = $this->get_description();
+		$image_data = $this->get_social_image_data();
 
 		printf( "<meta name=\"twitter:card\" content=\"%s\" />\n", esc_attr( $card_type ) );
 
@@ -682,95 +721,287 @@ class RationalSEO_Frontend {
 			printf( "<meta name=\"twitter:description\" content=\"%s\" />\n", esc_attr( $desc ) );
 		}
 
-		if ( $image ) {
-			printf( "<meta name=\"twitter:image\" content=\"%s\" />\n", esc_url( $image ) );
+		if ( ! empty( $image_data['url'] ) ) {
+			printf( "<meta name=\"twitter:image\" content=\"%s\" />\n", esc_url( $image_data['url'] ) );
+
+			if ( ! empty( $image_data['alt'] ) ) {
+				printf( "<meta name=\"twitter:image:alt\" content=\"%s\" />\n", esc_attr( $image_data['alt'] ) );
+			}
 		}
 	}
 
 	/**
-	 * Get social sharing image.
+	 * Build the standard context array passed to all filters and actions.
 	 *
-	 * Priority:
-	 * 1. Custom social image override (post meta)
-	 * 2. Featured image (if singular post/page)
-	 * 3. Default social image from settings
-	 * 4. Site logo from settings
+	 * The mode string reflects the current WordPress conditional hierarchy.
+	 * queried_object is passed through raw from get_queried_object() — callers
+	 * receive a WP_Post, WP_Term, WP_Post_Type, WP_User, or null depending on
+	 * the current route.
 	 *
-	 * @return string Image URL or empty string.
+	 * @since 1.0.6
+	 *
+	 * @return array {
+	 *     @type string $mode           Resolution mode: 'front_page' | 'home' | 'singular' |
+	 *                                  'archive_term' | 'archive_post_type' | 'archive_author' |
+	 *                                  'archive_date' | 'search' | '404' | 'fallback'.
+	 *     @type mixed  $queried_object Result of get_queried_object() — WP_Post, WP_Term,
+	 *                                  WP_Post_Type, WP_User, or null.
+	 *     @type int    $post_id        Queried post ID when is_singular(); 0 otherwise.
+	 *     @type int    $term_id        Queried term ID when is a taxonomy archive; 0 otherwise.
+	 * }
 	 */
-	private function get_social_image() {
-		// Return cached value if available.
-		if ( null !== $this->cached_social_image ) {
-			return $this->cached_social_image;
+	private function build_context() {
+		if ( is_front_page() ) {
+			$mode = 'front_page';
+		} elseif ( is_home() ) {
+			$mode = 'home';
+		} elseif ( is_singular() ) {
+			$mode = 'singular';
+		} elseif ( is_category() || is_tag() || is_tax() ) {
+			$mode = 'archive_term';
+		} elseif ( is_post_type_archive() ) {
+			$mode = 'archive_post_type';
+		} elseif ( is_author() ) {
+			$mode = 'archive_author';
+		} elseif ( is_date() ) {
+			$mode = 'archive_date';
+		} elseif ( is_search() ) {
+			$mode = 'search';
+		} elseif ( is_404() ) {
+			$mode = '404';
+		} else {
+			$mode = 'fallback';
 		}
 
-		// Try custom social image or featured image from the blog page.
+		$is_tax_archive = ( is_category() || is_tag() || is_tax() );
+
+		return array(
+			'mode'           => $mode,
+			'queried_object' => get_queried_object(),
+			'post_id'        => is_singular() ? (int) get_queried_object_id() : 0,
+			'term_id'        => $is_tax_archive ? (int) get_queried_object_id() : 0,
+		);
+	}
+
+	/**
+	 * Normalize image data array, filling any missing keys with safe defaults.
+	 *
+	 * Accepts a partial or non-array value from external filter callbacks and
+	 * ensures the returned array always contains every key in the canonical shape.
+	 *
+	 * @since 1.0.6
+	 *
+	 * @param mixed $data Partial image data array, or any non-array value.
+	 * @return array Normalized image data with all canonical keys present.
+	 */
+	private function normalize_image_data( $data ) {
+		return wp_parse_args(
+			(array) $data,
+			array(
+				'url'        => '',
+				'secure_url' => '',
+				'type'       => '',
+				'width'      => 0,
+				'height'     => 0,
+				'alt'        => '',
+				'id'         => 0,
+			)
+		);
+	}
+
+	/**
+	 * Get social sharing image data.
+	 *
+	 * Returns a structured array describing the social image for the current
+	 * page. All keys are always present; unknown values use safe defaults.
+	 *
+	 * Resolution priority:
+	 * 1. is_home()     — blog page og_image meta, then blog page featured image.
+	 * 2. is_singular() — post og_image meta, then post featured image.
+	 * 3. is_category()/is_tag()/is_tax() — term og_image meta.
+	 * 4. Settings social_default_image.
+	 * 5. Settings site_logo.
+	 * 6. Empty (all defaults).
+	 *
+	 * @since 1.0.6
+	 *
+	 * @return array {
+	 *     @type string $url        Canonical image URL; https when site is https.
+	 *     @type string $secure_url HTTPS URL; matches $url when site is https; '' when no clear https variant.
+	 *     @type string $type       MIME type, e.g. 'image/jpeg'; '' when unknown.
+	 *     @type int    $width      Image width in pixels; 0 when unknown.
+	 *     @type int    $height     Image height in pixels; 0 when unknown.
+	 *     @type string $alt        Attachment alt text; '' when unknown.
+	 *     @type int    $id         Attachment post ID; 0 when image is a raw URL.
+	 * }
+	 */
+	private function get_social_image_data() {
+		// Return cached value if available.
+		if ( null !== $this->cached_social_image_data ) {
+			return $this->cached_social_image_data;
+		}
+
+		/**
+		 * Short-circuit the social image data resolution.
+		 *
+		 * Return non-null to short-circuit default resolution; return null to fall
+		 * through to internal logic. A partial array is accepted — missing keys are
+		 * filled with safe defaults by normalize_image_data().
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param array|null $pre     Return a (partial) image data array to short-circuit, or null to continue.
+		 * @param array      $context Standard context array from build_context().
+		 */
+		$pre = apply_filters( 'rationalseo_og_image_data', null, $this->build_context() );
+		if ( null !== $pre ) {
+			$this->cached_social_image_data = $this->normalize_image_data( $pre );
+			return $this->cached_social_image_data;
+		}
+
+		$empty = $this->normalize_image_data( array() );
+
+		// Determine whether the site uses https for secure_url logic.
+		$site_is_https = ( 'https' === wp_parse_url( home_url(), PHP_URL_SCHEME ) );
+
+		/**
+		 * Build image data from an attachment ID (featured image).
+		 * Resolves width, height, mime type, alt, and URL from WP attachment APIs.
+		 *
+		 * @param int $attachment_id Attachment post ID.
+		 * @return array Normalized image data.
+		 */
+		$build_from_attachment = function( $attachment_id ) use ( $empty, $site_is_https ) {
+			$url = wp_get_attachment_url( $attachment_id );
+			if ( ! $url ) {
+				return $empty;
+			}
+
+			$meta   = wp_get_attachment_metadata( $attachment_id );
+			$width  = ( isset( $meta['width'] ) ) ? (int) $meta['width'] : 0;
+			$height = ( isset( $meta['height'] ) ) ? (int) $meta['height'] : 0;
+			$type   = (string) get_post_mime_type( $attachment_id );
+			$alt    = (string) get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+
+			if ( $site_is_https ) {
+				$secure_url = $url;
+			} else {
+				$parsed_scheme = wp_parse_url( $url, PHP_URL_SCHEME );
+				$secure_url    = ( 'http' === $parsed_scheme || 'https' === $parsed_scheme )
+					? set_url_scheme( $url, 'https' )
+					: '';
+			}
+
+			return array(
+				'url'        => $url,
+				'secure_url' => $secure_url,
+				'type'       => $type,
+				'width'      => $width,
+				'height'     => $height,
+				'alt'        => $alt,
+				'id'         => (int) $attachment_id,
+			);
+		};
+
+		/**
+		 * Build image data from a raw URL string (meta value, settings).
+		 * Width, height, type, and alt are unknown without a remote fetch.
+		 *
+		 * @param string $url Raw image URL.
+		 * @return array Normalized image data.
+		 */
+		$build_from_url = function( $url ) use ( $site_is_https ) {
+			if ( $site_is_https ) {
+				$secure_url = $url;
+			} else {
+				$parsed_scheme = wp_parse_url( $url, PHP_URL_SCHEME );
+				$secure_url    = ( 'http' === $parsed_scheme || 'https' === $parsed_scheme )
+					? set_url_scheme( $url, 'https' )
+					: '';
+			}
+
+			return array(
+				'url'        => $url,
+				'secure_url' => $secure_url,
+				'type'       => '',
+				'width'      => 0,
+				'height'     => 0,
+				'alt'        => '',
+				'id'         => 0,
+			);
+		};
+
+		// 1. Blog page: og_image meta or featured image.
 		if ( is_home() ) {
 			$blog_page_id = get_option( 'page_for_posts' );
 			if ( $blog_page_id ) {
 				$meta = $this->get_post_seo_meta( $blog_page_id );
 				if ( ! empty( $meta['og_image'] ) ) {
-					$this->cached_social_image = $meta['og_image'];
-					return $this->cached_social_image;
+					$this->cached_social_image_data = $build_from_url( $meta['og_image'] );
+					return $this->cached_social_image_data;
 				}
 				if ( has_post_thumbnail( $blog_page_id ) ) {
-					$thumbnail_id  = get_post_thumbnail_id( $blog_page_id );
-					$thumbnail_url = wp_get_attachment_image_url( $thumbnail_id, 'large' );
-					if ( $thumbnail_url ) {
-						$this->cached_social_image = $thumbnail_url;
-						return $this->cached_social_image;
+					$thumbnail_id = get_post_thumbnail_id( $blog_page_id );
+					if ( $thumbnail_id ) {
+						$data = $build_from_attachment( $thumbnail_id );
+						if ( ! empty( $data['url'] ) ) {
+							$this->cached_social_image_data = $data;
+							return $this->cached_social_image_data;
+						}
 					}
 				}
 			}
 		}
 
-		// Try custom social image override for singular posts/pages.
+		// 2. Singular post/page: og_image meta or featured image.
 		if ( is_singular() ) {
 			$post = get_queried_object();
 			$meta = $this->get_post_seo_meta( $post->ID );
 
 			if ( ! empty( $meta['og_image'] ) ) {
-				$this->cached_social_image = $meta['og_image'];
-				return $this->cached_social_image;
+				$this->cached_social_image_data = $build_from_url( $meta['og_image'] );
+				return $this->cached_social_image_data;
 			}
 
-			// Try featured image.
 			if ( has_post_thumbnail( $post ) ) {
-				$thumbnail_id  = get_post_thumbnail_id( $post );
-				$thumbnail_url = wp_get_attachment_image_url( $thumbnail_id, 'large' );
-				if ( $thumbnail_url ) {
-					$this->cached_social_image = $thumbnail_url;
-					return $this->cached_social_image;
+				$thumbnail_id = get_post_thumbnail_id( $post );
+				if ( $thumbnail_id ) {
+					$data = $build_from_attachment( $thumbnail_id );
+					if ( ! empty( $data['url'] ) ) {
+						$this->cached_social_image_data = $data;
+						return $this->cached_social_image_data;
+					}
 				}
 			}
 		}
 
-		// Try custom social image for taxonomy archives.
+		// 3. Taxonomy archive: term og_image meta.
 		if ( is_category() || is_tag() || is_tax() ) {
 			$term = get_queried_object();
 			$meta = $this->get_term_seo_meta( $term->term_id );
 			if ( ! empty( $meta['og_image'] ) ) {
-				$this->cached_social_image = $meta['og_image'];
-				return $this->cached_social_image;
+				$this->cached_social_image_data = $build_from_url( $meta['og_image'] );
+				return $this->cached_social_image_data;
 			}
 		}
 
-		// Try default social image from settings.
+		// 4. Default social image from settings.
 		$default_image = $this->settings->get( 'social_default_image' );
 		if ( ! empty( $default_image ) ) {
-			$this->cached_social_image = $default_image;
-			return $this->cached_social_image;
+			$this->cached_social_image_data = $build_from_url( $default_image );
+			return $this->cached_social_image_data;
 		}
 
-		// Try site logo from settings.
+		// 5. Site logo from settings.
 		$site_logo = $this->settings->get( 'site_logo' );
 		if ( ! empty( $site_logo ) ) {
-			$this->cached_social_image = $site_logo;
-			return $this->cached_social_image;
+			$this->cached_social_image_data = $build_from_url( $site_logo );
+			return $this->cached_social_image_data;
 		}
 
-		$this->cached_social_image = '';
-		return $this->cached_social_image;
+		// 6. Empty fallback.
+		$this->cached_social_image_data = $empty;
+		return $this->cached_social_image_data;
 	}
 
 	/**
@@ -830,8 +1061,9 @@ class RationalSEO_Frontend {
 
 		// Build Article entity for singular posts/pages.
 		if ( is_singular() && ! is_front_page() ) {
-			$post  = get_queried_object();
-			$image = $this->get_social_image();
+			$post       = get_queried_object();
+			$image_data = $this->get_social_image_data();
+			$image      = $image_data['url'];
 
 			$article = array(
 				'@type'            => 'Article',
