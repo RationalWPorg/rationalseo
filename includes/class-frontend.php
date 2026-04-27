@@ -786,6 +786,17 @@ class RationalSEO_Frontend {
 			return;
 		}
 
+		/**
+		 * Fires before the Open Graph meta tags are emitted.
+		 *
+		 * Fires only when the block is not skipped via rationalseo_skip_open_graph.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param array $context Standard context array from build_context().
+		 */
+		do_action( 'rationalseo_before_open_graph', $context );
+
 		$locale     = get_locale();
 		$og_type    = is_singular() && ! is_front_page() ? 'article' : 'website';
 		$title      = $this->get_title();
@@ -894,6 +905,17 @@ class RationalSEO_Frontend {
 				printf( "<meta property=\"og:image:alt\" content=\"%s\" />\n", esc_attr( $image_data['alt'] ) );
 			}
 		}
+
+		/**
+		 * Fires after the Open Graph meta tags are emitted.
+		 *
+		 * Fires only when the block is not skipped via rationalseo_skip_open_graph.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param array $context Standard context array from build_context().
+		 */
+		do_action( 'rationalseo_after_open_graph', $context );
 	}
 
 	/**
@@ -913,6 +935,17 @@ class RationalSEO_Frontend {
 		if ( apply_filters( 'rationalseo_skip_twitter_cards', false, $context ) ) {
 			return;
 		}
+
+		/**
+		 * Fires before the Twitter Cards meta tags are emitted.
+		 *
+		 * Fires only when the block is not skipped via rationalseo_skip_twitter_cards.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param array $context Standard context array from build_context().
+		 */
+		do_action( 'rationalseo_before_twitter_cards', $context );
 
 		$card_type  = $this->settings->get( 'twitter_card_type', 'summary_large_image' );
 		$title      = $this->get_title();
@@ -963,6 +996,17 @@ class RationalSEO_Frontend {
 				printf( "<meta name=\"twitter:image:alt\" content=\"%s\" />\n", esc_attr( $image_data['alt'] ) );
 			}
 		}
+
+		/**
+		 * Fires after the Twitter Cards meta tags are emitted.
+		 *
+		 * Fires only when the block is not skipped via rationalseo_skip_twitter_cards.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param array $context Standard context array from build_context().
+		 */
+		do_action( 'rationalseo_after_twitter_cards', $context );
 	}
 
 	/**

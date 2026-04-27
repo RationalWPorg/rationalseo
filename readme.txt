@@ -4,7 +4,7 @@ Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -135,7 +135,95 @@ Data is only sent when a user explicitly clicks an AI suggestion button. The dat
 * Terms of Use: [https://openai.com/policies/terms-of-use/](https://openai.com/policies/terms-of-use/)
 * Privacy Policy: [https://openai.com/policies/privacy-policy/](https://openai.com/policies/privacy-policy/)
 
+== Hooks for developers ==
+
+RationalSEO exposes a complete set of filters and actions so themes and plugins can customize or extend output without forking the plugin. All hooks were introduced in version 1.0.6.
+
+= Short-circuit filters =
+
+**Return non-null to short-circuit default resolution; return null to fall through to internal logic.**
+
+These filters let you override the data that RationalSEO resolves internally. Return a non-null value to bypass the built-in logic entirely, or return null to let RationalSEO proceed as normal.
+
+* `rationalseo_og_image_data` — Return a (partial) image data array; missing keys are filled with safe defaults. Signature: `($pre, $context)`.
+* `rationalseo_meta_description` — Return a string to override the meta description. An empty string `''` means "explicitly no description" and suppresses the tag. Signature: `($pre, $context)`.
+* `rationalseo_post_seo_meta` — Return an array of post SEO meta to override the database lookup. Signature: `($pre, $post_id)`.
+* `rationalseo_term_seo_meta` — Return an array of term SEO meta to override the database lookup. Signature: `($pre, $term_id)`.
+
+= Per-value filters =
+
+These filters run on the resolved value just before it is output. All use the signature `($value, $context)`.
+
+* `rationalseo_document_title` — string. The `<title>` tag value before output.
+* `rationalseo_canonical_url` — string. The `rel=canonical` URL before output.
+* `rationalseo_robots` — array. The robots directives array (joined with `, ` for output).
+* `rationalseo_og_locale` — string. `og:locale` value before output.
+* `rationalseo_og_type` — string. `og:type` value (e.g. `website` / `article`) before output.
+* `rationalseo_og_title` — string. `og:title` value before output.
+* `rationalseo_og_description` — string. `og:description` value before output.
+* `rationalseo_og_url` — string. `og:url` value before output.
+* `rationalseo_og_site_name` — string. `og:site_name` value before output.
+* `rationalseo_twitter_card_type` — string. `twitter:card` value before output.
+* `rationalseo_twitter_title` — string. `twitter:title` value before output.
+* `rationalseo_twitter_description` — string. `twitter:description` value before output.
+
+= Skip filters =
+
+Return a truthy value to suppress an entire output block. Signature: `($skip, $context)`.
+
+* `rationalseo_skip_meta_description` — Skip the meta description tag entirely.
+* `rationalseo_skip_canonical` — Skip the canonical link tag entirely.
+* `rationalseo_skip_open_graph` — Skip all Open Graph tags entirely.
+* `rationalseo_skip_twitter_cards` — Skip all Twitter Card tags entirely.
+
+Example — disable Open Graph on the entire site:
+
+    add_filter( 'rationalseo_skip_open_graph', '__return_true' );
+
+= Action injection points =
+
+These actions fire immediately before and after each social meta block is emitted. They fire only when the block is not skipped via the corresponding skip filter. Signature: `do_action( '...', $context )`.
+
+* `rationalseo_before_open_graph` — Fires before the Open Graph tags are output.
+* `rationalseo_after_open_graph` — Fires after the Open Graph tags are output.
+* `rationalseo_before_twitter_cards` — Fires before the Twitter Card tags are output.
+* `rationalseo_after_twitter_cards` — Fires after the Twitter Card tags are output.
+
+Example — append a custom og:* tag after the standard Open Graph block:
+
+    add_action( 'rationalseo_after_open_graph', function( $ctx ) {
+        // Append extra og:* tags here.
+        echo "<meta property=\"og:custom\" content=\"value\" />\n";
+    } );
+
+= The $context array =
+
+All per-value filters, skip filters, and action hooks receive a `$context` array as their last argument. It is built by the internal `build_context()` method and always contains the following keys:
+
+* `mode` — string. One of: `front_page`, `home`, `singular`, `archive_term`, `archive_post_type`, `archive_author`, `archive_date`, `search`, `404`, `fallback`.
+* `queried_object` — mixed. Result of `get_queried_object()` at resolution time. May be `WP_Post`, `WP_Term`, `WP_Post_Type`, `WP_User`, or `null`.
+* `post_id` — int. Queried post ID when on a singular view; `0` otherwise.
+* `term_id` — int. Queried term ID when on a taxonomy archive; `0` otherwise.
+
+= Worked example =
+
+Override `og:type` to `event` for a custom post type, leaving all other post types unchanged:
+
+    add_filter( 'rationalseo_og_type', function( $type, $context ) {
+        if ( 'singular' === $context['mode'] && 'tribe_events' === get_post_type( $context['post_id'] ) ) {
+            return 'event';
+        }
+        return $type;
+    }, 10, 2 );
+
+(`tribe_events` is illustrative — works for any CPT slug.)
+
 == Changelog ==
+
+= 1.0.6 =
+* Open Graph: emit og:image:secure_url, og:image:type, og:image:width, og:image:height, og:image:alt when source data is available.
+* Twitter Cards: emit twitter:image:alt when source data is available.
+* Add filter and action hooks so themes and plugins can customize or extend output without forking the plugin. See the "Hooks for developers" section for the full reference.
 
 = 1.0.5 =
 * Improved: "Suggest All" now builds title and description around existing focus keyword when one is set
