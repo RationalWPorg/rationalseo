@@ -153,17 +153,48 @@ class RationalSEO_Frontend {
 	 * @return array Associative array of meta values.
 	 */
 	private function get_post_seo_meta( $post_id ) {
-		if ( null === $this->post_meta_cache ) {
-			$all_meta = get_post_meta( $post_id );
-			$this->post_meta_cache = array(
-				'title'         => isset( $all_meta['_rationalseo_title'][0] ) ? $all_meta['_rationalseo_title'][0] : '',
-				'desc'          => isset( $all_meta['_rationalseo_desc'][0] ) ? $all_meta['_rationalseo_desc'][0] : '',
-				'noindex'       => isset( $all_meta['_rationalseo_noindex'][0] ) ? $all_meta['_rationalseo_noindex'][0] : '',
-				'canonical'     => isset( $all_meta['_rationalseo_canonical'][0] ) ? $all_meta['_rationalseo_canonical'][0] : '',
-				'og_image'      => isset( $all_meta['_rationalseo_og_image'][0] ) ? $all_meta['_rationalseo_og_image'][0] : '',
-				'focus_keyword' => isset( $all_meta['_rationalseo_focus_keyword'][0] ) ? $all_meta['_rationalseo_focus_keyword'][0] : '',
-			);
+		if ( null !== $this->post_meta_cache ) {
+			return $this->post_meta_cache;
 		}
+
+		/**
+		 * Short-circuit all RationalSEO post meta resolution for a given post.
+		 *
+		 * Return non-null array to short-circuit default resolution; return null to fall
+		 * through to internal logic. Missing keys are filled with safe defaults via
+		 * wp_parse_args(), so a partial array will not produce PHP warnings.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param array|null $pre     Return an array to short-circuit, or null to continue.
+		 * @param int        $post_id The post ID being resolved.
+		 */
+		$pre = apply_filters( 'rationalseo_post_seo_meta', null, $post_id );
+		if ( null !== $pre && is_array( $pre ) ) {
+			$this->post_meta_cache = wp_parse_args(
+				$pre,
+				array(
+					'title'         => '',
+					'desc'          => '',
+					'noindex'       => '',
+					'canonical'     => '',
+					'og_image'      => '',
+					'focus_keyword' => '',
+				)
+			);
+			return $this->post_meta_cache;
+		}
+
+		$all_meta = get_post_meta( $post_id );
+		$this->post_meta_cache = array(
+			'title'         => isset( $all_meta['_rationalseo_title'][0] ) ? $all_meta['_rationalseo_title'][0] : '',
+			'desc'          => isset( $all_meta['_rationalseo_desc'][0] ) ? $all_meta['_rationalseo_desc'][0] : '',
+			'noindex'       => isset( $all_meta['_rationalseo_noindex'][0] ) ? $all_meta['_rationalseo_noindex'][0] : '',
+			'canonical'     => isset( $all_meta['_rationalseo_canonical'][0] ) ? $all_meta['_rationalseo_canonical'][0] : '',
+			'og_image'      => isset( $all_meta['_rationalseo_og_image'][0] ) ? $all_meta['_rationalseo_og_image'][0] : '',
+			'focus_keyword' => isset( $all_meta['_rationalseo_focus_keyword'][0] ) ? $all_meta['_rationalseo_focus_keyword'][0] : '',
+		);
+
 		return $this->post_meta_cache;
 	}
 
@@ -174,16 +205,89 @@ class RationalSEO_Frontend {
 	 * @return array Associative array of meta values.
 	 */
 	private function get_term_seo_meta( $term_id ) {
-		if ( null === $this->term_meta_cache ) {
-			$this->term_meta_cache = array(
-				'title'     => get_term_meta( $term_id, '_rationalseo_term_title', true ),
-				'desc'      => get_term_meta( $term_id, '_rationalseo_term_desc', true ),
-				'noindex'   => get_term_meta( $term_id, '_rationalseo_term_noindex', true ),
-				'canonical' => get_term_meta( $term_id, '_rationalseo_term_canonical', true ),
-				'og_image'  => get_term_meta( $term_id, '_rationalseo_term_og_image', true ),
-			);
+		if ( null !== $this->term_meta_cache ) {
+			return $this->term_meta_cache;
 		}
+
+		/**
+		 * Short-circuit all RationalSEO term meta resolution for a given term.
+		 *
+		 * Return non-null array to short-circuit default resolution; return null to fall
+		 * through to internal logic. Missing keys are filled with safe defaults via
+		 * wp_parse_args(), so a partial array will not produce PHP warnings.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param array|null $pre     Return an array to short-circuit, or null to continue.
+		 * @param int        $term_id The term ID being resolved.
+		 */
+		$pre = apply_filters( 'rationalseo_term_seo_meta', null, $term_id );
+		if ( null !== $pre && is_array( $pre ) ) {
+			$this->term_meta_cache = wp_parse_args(
+				$pre,
+				array(
+					'title'     => '',
+					'desc'      => '',
+					'noindex'   => '',
+					'canonical' => '',
+					'og_image'  => '',
+				)
+			);
+			return $this->term_meta_cache;
+		}
+
+		$this->term_meta_cache = array(
+			'title'     => get_term_meta( $term_id, '_rationalseo_term_title', true ),
+			'desc'      => get_term_meta( $term_id, '_rationalseo_term_desc', true ),
+			'noindex'   => get_term_meta( $term_id, '_rationalseo_term_noindex', true ),
+			'canonical' => get_term_meta( $term_id, '_rationalseo_term_canonical', true ),
+			'og_image'  => get_term_meta( $term_id, '_rationalseo_term_og_image', true ),
+		);
+
 		return $this->term_meta_cache;
+	}
+
+	/**
+	 * Finalize title: apply filter, cache, and return.
+	 *
+	 * Called at each exit point of get_title() so the filter fires exactly once
+	 * per request regardless of which branch resolved the title.
+	 *
+	 * @param string $title Resolved title value before filtering.
+	 * @return string Filtered title.
+	 */
+	private function finalize_title( $title ) {
+		/**
+		 * Filter the resolved document title just before it is cached and returned.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $title   Resolved title string.
+		 * @param array  $context Standard context array from build_context().
+		 */
+		$title = (string) apply_filters( 'rationalseo_document_title', (string) $title, $this->build_context() );
+		$this->cached_title = $title;
+		return $title;
+	}
+
+	/**
+	 * Finalize canonical: apply filter, cache, and return.
+	 *
+	 * @param string $canonical Resolved canonical URL before filtering.
+	 * @return string Filtered canonical URL.
+	 */
+	private function finalize_canonical( $canonical ) {
+		/**
+		 * Filter the resolved canonical URL just before it is cached and returned.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $canonical Resolved canonical URL string.
+		 * @param array  $context   Standard context array from build_context().
+		 */
+		$canonical = (string) apply_filters( 'rationalseo_canonical_url', (string) $canonical, $this->build_context() );
+		$this->cached_canonical = $canonical;
+		return $canonical;
 	}
 
 	/**
@@ -207,17 +311,14 @@ class RationalSEO_Frontend {
 			if ( $front_page_id ) {
 				$meta = $this->get_post_seo_meta( $front_page_id );
 				if ( ! empty( $meta['title'] ) ) {
-					$this->cached_title = $meta['title'];
-					return $this->cached_title;
+					return $this->finalize_title( $meta['title'] );
 				}
 			}
 			$tagline = get_bloginfo( 'description' );
 			if ( ! empty( $tagline ) ) {
-				$this->cached_title = sprintf( '%s %s %s', $site_name, $separator, $tagline );
-			} else {
-				$this->cached_title = $site_name;
+				return $this->finalize_title( sprintf( '%s %s %s', $site_name, $separator, $tagline ) );
 			}
-			return $this->cached_title;
+			return $this->finalize_title( $site_name );
 		}
 
 		// Blog page (separate posts page).
@@ -226,12 +327,10 @@ class RationalSEO_Frontend {
 			if ( $blog_page_id ) {
 				$meta = $this->get_post_seo_meta( $blog_page_id );
 				if ( ! empty( $meta['title'] ) ) {
-					$this->cached_title = $meta['title'];
-					return $this->cached_title;
+					return $this->finalize_title( $meta['title'] );
 				}
 			}
-			$this->cached_title = sprintf( '%s %s %s', __( 'Blog', 'rationalseo' ), $separator, $site_name );
-			return $this->cached_title;
+			return $this->finalize_title( sprintf( '%s %s %s', __( 'Blog', 'rationalseo' ), $separator, $site_name ) );
 		}
 
 		// Singular posts/pages.
@@ -241,12 +340,10 @@ class RationalSEO_Frontend {
 			$meta       = $this->get_post_seo_meta( $post->ID );
 
 			if ( ! empty( $meta['title'] ) ) {
-				$this->cached_title = $meta['title'];
-				return $this->cached_title;
+				return $this->finalize_title( $meta['title'] );
 			}
 
-			$this->cached_title = sprintf( '%s %s %s', $post_title, $separator, $site_name );
-			return $this->cached_title;
+			return $this->finalize_title( sprintf( '%s %s %s', $post_title, $separator, $site_name ) );
 		}
 
 		// Archive pages.
@@ -256,34 +353,28 @@ class RationalSEO_Frontend {
 				$meta = $this->get_term_seo_meta( $term->term_id );
 
 				if ( ! empty( $meta['title'] ) ) {
-					$this->cached_title = $meta['title'];
-					return $this->cached_title;
+					return $this->finalize_title( $meta['title'] );
 				}
-				$this->cached_title = sprintf( '%s %s %s', $term->name, $separator, $site_name );
-				return $this->cached_title;
+				return $this->finalize_title( sprintf( '%s %s %s', $term->name, $separator, $site_name ) );
 			}
 
 			if ( is_post_type_archive() ) {
 				$post_type    = get_queried_object();
 				$custom_title = $this->settings->get( 'archive_title_' . $post_type->name, '' );
 				if ( ! empty( $custom_title ) ) {
-					$this->cached_title = $custom_title;
-					return $this->cached_title;
+					return $this->finalize_title( $custom_title );
 				}
-				$this->cached_title = sprintf( '%s %s %s', $post_type->labels->name, $separator, $site_name );
-				return $this->cached_title;
+				return $this->finalize_title( sprintf( '%s %s %s', $post_type->labels->name, $separator, $site_name ) );
 			}
 
 			if ( is_author() ) {
 				$author = get_queried_object();
-				$this->cached_title = sprintf( '%s %s %s', $author->display_name, $separator, $site_name );
-				return $this->cached_title;
+				return $this->finalize_title( sprintf( '%s %s %s', $author->display_name, $separator, $site_name ) );
 			}
 
 			if ( is_date() ) {
 				$date_title = get_the_archive_title();
-				$this->cached_title = sprintf( '%s %s %s', $date_title, $separator, $site_name );
-				return $this->cached_title;
+				return $this->finalize_title( sprintf( '%s %s %s', $date_title, $separator, $site_name ) );
 			}
 		}
 
@@ -291,25 +382,36 @@ class RationalSEO_Frontend {
 		if ( is_search() ) {
 			/* translators: %s: Search query */
 			$search_title = sprintf( __( 'Search Results for "%s"', 'rationalseo' ), get_search_query() );
-			$this->cached_title = sprintf( '%s %s %s', $search_title, $separator, $site_name );
-			return $this->cached_title;
+			return $this->finalize_title( sprintf( '%s %s %s', $search_title, $separator, $site_name ) );
 		}
 
 		// 404 page.
 		if ( is_404() ) {
-			$this->cached_title = sprintf( '%s %s %s', __( 'Page Not Found', 'rationalseo' ), $separator, $site_name );
-			return $this->cached_title;
+			return $this->finalize_title( sprintf( '%s %s %s', __( 'Page Not Found', 'rationalseo' ), $separator, $site_name ) );
 		}
 
 		// Fallback.
-		$this->cached_title = $title;
-		return $this->cached_title;
+		return $this->finalize_title( $title );
 	}
 
 	/**
 	 * Output meta description.
 	 */
 	private function output_description() {
+		$context = $this->build_context();
+
+		/**
+		 * Skip the meta description block entirely when truthy.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param bool  $skip    Whether to skip output. Default false.
+		 * @param array $context Standard context array from build_context().
+		 */
+		if ( apply_filters( 'rationalseo_skip_meta_description', false, $context ) ) {
+			return;
+		}
+
 		$description = $this->get_description();
 		if ( $description ) {
 			printf( "<meta name=\"description\" content=\"%s\" />\n", esc_attr( $description ) );
@@ -557,6 +659,20 @@ class RationalSEO_Frontend {
 		// Add max-image-preview for better image previews in search.
 		$robots[] = 'max-image-preview:large';
 
+		/**
+		 * Filter the resolved robots directives array just before output.
+		 *
+		 * Receives the array of directive strings (e.g. ['index', 'follow',
+		 * 'max-image-preview:large']). Return value is cast to array; an empty
+		 * array suppresses the robots meta tag entirely.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param array $robots  Array of robots directive strings.
+		 * @param array $context Standard context array from build_context().
+		 */
+		$robots = (array) apply_filters( 'rationalseo_robots', $robots, $this->build_context() );
+
 		return $robots;
 	}
 
@@ -564,6 +680,20 @@ class RationalSEO_Frontend {
 	 * Output canonical URL.
 	 */
 	private function output_canonical() {
+		$context = $this->build_context();
+
+		/**
+		 * Skip the canonical link tag entirely when truthy.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param bool  $skip    Whether to skip output. Default false.
+		 * @param array $context Standard context array from build_context().
+		 */
+		if ( apply_filters( 'rationalseo_skip_canonical', false, $context ) ) {
+			return;
+		}
+
 		$canonical = $this->get_canonical();
 		if ( $canonical ) {
 			printf( "<link rel=\"canonical\" href=\"%s\" />\n", esc_url( $canonical ) );
@@ -586,17 +716,14 @@ class RationalSEO_Frontend {
 			$post = get_queried_object();
 			$meta = $this->get_post_seo_meta( $post->ID );
 			if ( ! empty( $meta['canonical'] ) ) {
-				$this->cached_canonical = $meta['canonical'];
-				return $this->cached_canonical;
+				return $this->finalize_canonical( $meta['canonical'] );
 			}
-			$this->cached_canonical = get_permalink( $post );
-			return $this->cached_canonical;
+			return $this->finalize_canonical( get_permalink( $post ) );
 		}
 
 		// Homepage.
 		if ( is_front_page() || is_home() ) {
-			$this->cached_canonical = home_url( '/' );
-			return $this->cached_canonical;
+			return $this->finalize_canonical( home_url( '/' ) );
 		}
 
 		// Archive pages.
@@ -605,30 +732,25 @@ class RationalSEO_Frontend {
 				$term = get_queried_object();
 				$meta = $this->get_term_seo_meta( $term->term_id );
 				if ( ! empty( $meta['canonical'] ) ) {
-					$this->cached_canonical = $meta['canonical'];
-					return $this->cached_canonical;
+					return $this->finalize_canonical( $meta['canonical'] );
 				}
-				$this->cached_canonical = get_term_link( $term );
-				return $this->cached_canonical;
+				return $this->finalize_canonical( get_term_link( $term ) );
 			}
 
 			if ( is_post_type_archive() ) {
 				$post_type = get_queried_object();
-				$this->cached_canonical = get_post_type_archive_link( $post_type->name );
-				return $this->cached_canonical;
+				return $this->finalize_canonical( get_post_type_archive_link( $post_type->name ) );
 			}
 
 			if ( is_author() ) {
 				$author = get_queried_object();
-				$this->cached_canonical = get_author_posts_url( $author->ID );
-				return $this->cached_canonical;
+				return $this->finalize_canonical( get_author_posts_url( $author->ID ) );
 			}
 		}
 
 		// Fallback to current URL (cleaned).
 		global $wp;
-		$this->cached_canonical = home_url( $wp->request );
-		return $this->cached_canonical;
+		return $this->finalize_canonical( home_url( $wp->request ) );
 	}
 
 	/**
@@ -650,6 +772,20 @@ class RationalSEO_Frontend {
 	 * Output Open Graph meta tags.
 	 */
 	private function output_open_graph() {
+		$context = $this->build_context();
+
+		/**
+		 * Skip the Open Graph block entirely when truthy.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param bool  $skip    Whether to skip output. Default false.
+		 * @param array $context Standard context array from build_context().
+		 */
+		if ( apply_filters( 'rationalseo_skip_open_graph', false, $context ) ) {
+			return;
+		}
+
 		$locale     = get_locale();
 		$og_type    = is_singular() && ! is_front_page() ? 'article' : 'website';
 		$title      = $this->get_title();
@@ -658,21 +794,79 @@ class RationalSEO_Frontend {
 		$site_name  = $this->settings->get( 'site_name', get_bloginfo( 'name' ) );
 		$image_data = $this->get_social_image_data();
 
+		/**
+		 * Filter the resolved og:locale value just before output.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $locale  Resolved locale string.
+		 * @param array  $context Standard context array from build_context().
+		 */
+		$locale = apply_filters( 'rationalseo_og_locale', $locale, $context );
 		printf( "<meta property=\"og:locale\" content=\"%s\" />\n", esc_attr( $locale ) );
+
+		/**
+		 * Filter the resolved og:type value just before output.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $og_type Resolved OG type string (e.g. 'article', 'website').
+		 * @param array  $context Standard context array from build_context().
+		 */
+		$og_type = apply_filters( 'rationalseo_og_type', $og_type, $context );
 		printf( "<meta property=\"og:type\" content=\"%s\" />\n", esc_attr( $og_type ) );
 
+		/**
+		 * Filter the resolved og:title value just before output.
+		 *
+		 * Note: this is a separate filter from rationalseo_document_title — themes
+		 * may want different OG titles vs <title> tag values.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $title   Resolved OG title string.
+		 * @param array  $context Standard context array from build_context().
+		 */
+		$title = apply_filters( 'rationalseo_og_title', $title, $context );
 		if ( $title ) {
 			printf( "<meta property=\"og:title\" content=\"%s\" />\n", esc_attr( $title ) );
 		}
 
+		/**
+		 * Filter the resolved og:description value just before output.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $desc    Resolved OG description string.
+		 * @param array  $context Standard context array from build_context().
+		 */
+		$desc = apply_filters( 'rationalseo_og_description', $desc, $context );
 		if ( $desc ) {
 			printf( "<meta property=\"og:description\" content=\"%s\" />\n", esc_attr( $desc ) );
 		}
 
+		/**
+		 * Filter the resolved og:url value just before output.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $url     Resolved canonical URL string.
+		 * @param array  $context Standard context array from build_context().
+		 */
+		$url = apply_filters( 'rationalseo_og_url', $url, $context );
 		if ( $url ) {
 			printf( "<meta property=\"og:url\" content=\"%s\" />\n", esc_url( $url ) );
 		}
 
+		/**
+		 * Filter the resolved og:site_name value just before output.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $site_name Resolved site name string.
+		 * @param array  $context   Standard context array from build_context().
+		 */
+		$site_name = apply_filters( 'rationalseo_og_site_name', $site_name, $context );
 		if ( $site_name ) {
 			printf( "<meta property=\"og:site_name\" content=\"%s\" />\n", esc_attr( $site_name ) );
 		}
@@ -706,17 +900,58 @@ class RationalSEO_Frontend {
 	 * Output Twitter Card meta tags.
 	 */
 	private function output_twitter_cards() {
+		$context = $this->build_context();
+
+		/**
+		 * Skip the Twitter Cards block entirely when truthy.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param bool  $skip    Whether to skip output. Default false.
+		 * @param array $context Standard context array from build_context().
+		 */
+		if ( apply_filters( 'rationalseo_skip_twitter_cards', false, $context ) ) {
+			return;
+		}
+
 		$card_type  = $this->settings->get( 'twitter_card_type', 'summary_large_image' );
 		$title      = $this->get_title();
 		$desc       = $this->get_description();
 		$image_data = $this->get_social_image_data();
 
+		/**
+		 * Filter the resolved twitter:card type value just before output.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $card_type Resolved Twitter card type string.
+		 * @param array  $context   Standard context array from build_context().
+		 */
+		$card_type = apply_filters( 'rationalseo_twitter_card_type', $card_type, $context );
 		printf( "<meta name=\"twitter:card\" content=\"%s\" />\n", esc_attr( $card_type ) );
 
+		/**
+		 * Filter the resolved twitter:title value just before output.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $title   Resolved Twitter title string.
+		 * @param array  $context Standard context array from build_context().
+		 */
+		$title = apply_filters( 'rationalseo_twitter_title', $title, $context );
 		if ( $title ) {
 			printf( "<meta name=\"twitter:title\" content=\"%s\" />\n", esc_attr( $title ) );
 		}
 
+		/**
+		 * Filter the resolved twitter:description value just before output.
+		 *
+		 * @since 1.0.6
+		 *
+		 * @param string $desc    Resolved Twitter description string.
+		 * @param array  $context Standard context array from build_context().
+		 */
+		$desc = apply_filters( 'rationalseo_twitter_description', $desc, $context );
 		if ( $desc ) {
 			printf( "<meta name=\"twitter:description\" content=\"%s\" />\n", esc_attr( $desc ) );
 		}
