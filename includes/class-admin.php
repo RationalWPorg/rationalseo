@@ -33,7 +33,7 @@ class RationalSEO_Admin {
 	 * @param RationalSEO_Settings       $settings       Settings instance.
 	 * @param RationalSEO_Import_Manager $import_manager Import manager instance.
 	 */
-	public function __construct( RationalSEO_Settings $settings, RationalSEO_Import_Manager $import_manager = null ) {
+	public function __construct( RationalSEO_Settings $settings, ?RationalSEO_Import_Manager $import_manager = null ) {
 		$this->settings       = $settings;
 		$this->import_manager = $import_manager;
 		$this->init_hooks();

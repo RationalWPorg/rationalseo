@@ -61,6 +61,10 @@ class RationalSEO_Sitemap {
 		add_filter( 'redirect_canonical', array( $this, 'prevent_sitemap_redirect' ) );
 		add_action( 'rationalseo_rebuild_sitemap', array( $this, 'rebuild_sitemap_cache' ), 10, 2 );
 
+		// Replace the core sitemap with ours and advertise ours in robots.txt.
+		add_filter( 'wp_sitemaps_enabled', array( $this, 'disable_core_sitemaps' ) );
+		add_filter( 'robots_txt', array( $this, 'add_sitemap_to_robots' ), 10, 2 );
+
 		// Clear cache when posts are updated.
 		add_action( 'save_post', array( $this, 'clear_post_type_cache' ), 10, 2 );
 		add_action( 'delete_post', array( $this, 'clear_post_type_cache' ), 10, 2 );
@@ -95,6 +99,47 @@ class RationalSEO_Sitemap {
 		$vars[] = 'rationalseo_sitemap';
 		$vars[] = 'rationalseo_sitemap_page';
 		return $vars;
+	}
+
+	/**
+	 * Disable the WordPress core sitemap so it does not compete with ours.
+	 *
+	 * Only takes over when our sitemap is enabled; otherwise the core sitemap
+	 * is left untouched so users can fall back to it.
+	 *
+	 * @since 1.0.7
+	 *
+	 * @param bool $enabled Whether core sitemaps are enabled.
+	 * @return bool
+	 */
+	public function disable_core_sitemaps( $enabled ) {
+		if ( $this->settings->get( 'sitemap_enabled', true ) ) {
+			return false;
+		}
+
+		return $enabled;
+	}
+
+	/**
+	 * Advertise our sitemap in robots.txt.
+	 *
+	 * Core normally adds a Sitemap line for wp-sitemap.xml, but disabling core
+	 * sitemaps also removes that line, so we add our own.
+	 *
+	 * @since 1.0.7
+	 *
+	 * @param string $output The robots.txt content.
+	 * @param bool   $public Whether the site is public.
+	 * @return string
+	 */
+	public function add_sitemap_to_robots( $output, $public ) {
+		if ( ! $public || ! $this->settings->get( 'sitemap_enabled', true ) ) {
+			return $output;
+		}
+
+		$output .= 'Sitemap: ' . esc_url( home_url( '/sitemap.xml' ) ) . "\n";
+
+		return $output;
 	}
 
 	/**

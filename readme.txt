@@ -2,9 +2,9 @@
 Contributors: rationalwp
 Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -219,6 +219,11 @@ Override `og:type` to `event` for a custom post type, leaving all other post typ
 (`tribe_events` is illustrative — works for any CPT slug.)
 
 == Changelog ==
+
+= 1.0.7 =
+* Fixed: PHP 8.4 deprecation notice for an implicitly nullable constructor parameter.
+* Improved: Replaces the core WordPress sitemap with RationalSEO's sitemap and advertises it in robots.txt (only when the RationalSEO sitemap is enabled).
+* Tested up to WordPress 7.0.
 
 = 1.0.6 =
 * Open Graph: emit og:image:secure_url, og:image:type, og:image:width, og:image:height, og:image:alt when source data is available.
