@@ -208,6 +208,25 @@ class RationalSEO_Admin {
 			'rationalseo_sitemap_section'
 		);
 
+		// Schema Section — per-post-type JSON-LD control.
+		add_settings_section(
+			'rationalseo_schema_section',
+			__( 'Schema (JSON-LD)', 'rationalseo' ),
+			array( $this, 'render_section_schema' ),
+			'rationalseo_schema'
+		);
+
+		foreach ( $this->get_schema_post_types() as $post_type ) {
+			add_settings_field(
+				'schema_post_types_' . $post_type->name,
+				$post_type->labels->name,
+				array( $this, 'render_field_schema_type' ),
+				'rationalseo_schema',
+				'rationalseo_schema_section',
+				array( 'post_type' => $post_type )
+			);
+		}
+
 		// Archives Sections — one per post type with has_archive.
 		$archive_types = get_post_types( array( 'public' => true, 'has_archive' => true ), 'objects' );
 		foreach ( $archive_types as $post_type ) {
@@ -334,6 +353,24 @@ class RationalSEO_Admin {
 			}
 		}
 
+		// Handle per-post-type schema mapping.
+		$existing_schema_map         = isset( $old_settings['schema_post_types'] ) && is_array( $old_settings['schema_post_types'] )
+			? $old_settings['schema_post_types']
+			: array();
+		$sanitized['schema_post_types'] = $existing_schema_map;
+		$submitted_schema_map        = isset( $input['schema_post_types'] ) && is_array( $input['schema_post_types'] )
+			? $input['schema_post_types']
+			: array();
+		foreach ( $this->get_schema_post_types() as $post_type ) {
+			if ( ! isset( $submitted_schema_map[ $post_type->name ] ) ) {
+				continue;
+			}
+			$value = sanitize_key( $submitted_schema_map[ $post_type->name ] );
+			if ( in_array( $value, array( 'article', 'none' ), true ) ) {
+				$sanitized['schema_post_types'][ $post_type->name ] = $value;
+			}
+		}
+
 		// Flush rewrite rules if sitemap settings changed.
 		$sitemap_changed = (
 			( isset( $old_settings['sitemap_enabled'] ) ? $old_settings['sitemap_enabled'] : true ) !== $sanitized['sitemap_enabled']
@@ -406,6 +443,7 @@ class RationalSEO_Admin {
 		$current_tab = $this->get_current_tab();
 		$tabs        = array(
 			'general'  => __( 'General', 'rationalseo' ),
+			'schema'   => __( 'Schema', 'rationalseo' ),
 			'archives' => __( 'Archives', 'rationalseo' ),
 			'social'   => __( 'Social', 'rationalseo' ),
 			'sitemaps' => __( 'Sitemaps', 'rationalseo' ),
@@ -440,6 +478,8 @@ class RationalSEO_Admin {
 
 					if ( 'social' === $current_tab ) {
 						do_settings_sections( 'rationalseo_social' );
+					} elseif ( 'schema' === $current_tab ) {
+						do_settings_sections( 'rationalseo_schema' );
 					} elseif ( 'archives' === $current_tab ) {
 						$archive_types = get_post_types( array( 'public' => true, 'has_archive' => true ), 'objects' );
 						if ( empty( $archive_types ) ) {
@@ -692,6 +732,52 @@ class RationalSEO_Admin {
 			);
 			echo '</p>';
 		}
+	}
+
+	/**
+	 * Get the public post types eligible for schema mapping.
+	 *
+	 * Attachments are excluded — they carry their own media-specific markup
+	 * and are not meaningful Article targets.
+	 *
+	 * @return WP_Post_Type[] Keyed by post type name.
+	 */
+	private function get_schema_post_types() {
+		$post_types = get_post_types( array( 'public' => true ), 'objects' );
+		unset( $post_types['attachment'] );
+
+		return $post_types;
+	}
+
+	/**
+	 * Render Schema section description.
+	 */
+	public function render_section_schema() {
+		echo '<p>' . esc_html__( 'Choose the JSON-LD entity RationalSEO outputs on single views of each post type. Choose "None" when your theme or another plugin already outputs structured data for that post type — the sitewide Organization, WebSite, and WebPage data is always kept.', 'rationalseo' ) . '</p>';
+	}
+
+	/**
+	 * Render the per-post-type schema select field.
+	 *
+	 * @param array $args Field arguments including 'post_type' object.
+	 */
+	public function render_field_schema_type( $args ) {
+		$post_type = $args['post_type'];
+		$key       = $post_type->name;
+		$map       = (array) $this->settings->get( 'schema_post_types', array() );
+		$value     = isset( $map[ $key ] ) ? $map[ $key ] : 'article';
+		$field     = RationalSEO_Settings::OPTION_NAME . '[schema_post_types][' . $key . ']';
+		?>
+		<select name="<?php echo esc_attr( $field ); ?>" id="<?php echo esc_attr( 'schema_post_types_' . $key ); ?>">
+			<option value="article" <?php selected( $value, 'article' ); ?>>
+				<?php esc_html_e( 'Article (default)', 'rationalseo' ); ?>
+			</option>
+			<option value="none" <?php selected( $value, 'none' ); ?>>
+				<?php esc_html_e( 'None (disable schema output)', 'rationalseo' ); ?>
+			</option>
+		</select>
+		<p class="description"><?php esc_html_e( 'Select "None" to let your theme handle this post type\'s structured data.', 'rationalseo' ); ?></p>
+		<?php
 	}
 
 	/**

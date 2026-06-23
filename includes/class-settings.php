@@ -52,6 +52,7 @@ class RationalSEO_Settings {
 			'sitemap_enabled'        => true,
 			'sitemap_max_age'        => 0,
 			'sitemap_exclude_types'  => array(),
+			'schema_post_types'      => array(),
 			'openai_api_key'         => '',
 		);
 	}

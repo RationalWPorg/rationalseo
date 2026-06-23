@@ -1339,8 +1339,16 @@ class RationalSEO_Frontend {
 		$graph[] = $webpage;
 
 		// Build Article entity for singular posts/pages.
-		if ( is_singular() && ! is_front_page() ) {
-			$post       = get_queried_object();
+		$post = ( is_singular() && ! is_front_page() ) ? get_queried_object() : null;
+
+		// Resolve the schema type configured for this post type. A value of
+		// 'none' suppresses the per-page entity while leaving the sitewide
+		// Organization/WebSite/WebPage graph intact.
+		$schema_type = ( $post instanceof WP_Post )
+			? $this->get_singular_schema_type( $post->post_type )
+			: 'none';
+
+		if ( $post instanceof WP_Post && 'none' !== $schema_type ) {
 			$image_data = $this->get_social_image_data();
 			$image      = $image_data['url'];
 
@@ -1391,10 +1399,66 @@ class RationalSEO_Frontend {
 			'@graph'   => $graph,
 		);
 
+		/**
+		 * Filters the complete JSON-LD schema object before output.
+		 *
+		 * Use this to add, modify, or remove nodes in the `@graph` — for example,
+		 * to inject an Event or Product entity built from your post meta. Return
+		 * the modified schema array. Returning an array with an empty `@graph`
+		 * suppresses the JSON-LD output entirely.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param array $schema  Schema array with '@context' and '@graph' keys.
+		 * @param array $context Request context from build_context().
+		 */
+		$schema = apply_filters( 'rationalseo_schema', $schema, $this->build_context() );
+
+		// Nothing to output if a callback emptied the graph.
+		if ( ! is_array( $schema ) || empty( $schema['@graph'] ) ) {
+			return;
+		}
+
 		// Output the JSON-LD.
 		printf(
 			"<script type=\"application/ld+json\">\n%s\n</script>\n",
 			wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG )
 		);
+	}
+
+	/**
+	 * Resolve the JSON-LD schema type for a singular post type.
+	 *
+	 * Looks up the per-post-type mapping saved in settings. Post types with no
+	 * saved mapping default to 'article' for backward compatibility. A value of
+	 * 'none' tells output_schema() to omit the per-page entity while keeping the
+	 * sitewide Organization/WebSite/WebPage graph.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $post_type Post type slug.
+	 * @return string Either 'article' or 'none'.
+	 */
+	private function get_singular_schema_type( $post_type ) {
+		$map  = (array) $this->settings->get( 'schema_post_types', array() );
+		$type = isset( $map[ $post_type ] ) ? $map[ $post_type ] : 'article';
+
+		if ( ! in_array( $type, array( 'article', 'none' ), true ) ) {
+			$type = 'article';
+		}
+
+		/**
+		 * Filters the resolved JSON-LD schema type for a singular post type.
+		 *
+		 * Return 'none' to suppress the per-page entity, 'article' to keep the
+		 * default Article entity, or hook this filter to drive custom output.
+		 *
+		 * @since 1.1.0
+		 *
+		 * @param string $type      Resolved type: 'article' or 'none'.
+		 * @param string $post_type Post type slug.
+		 * @param array  $context   Request context from build_context().
+		 */
+		return (string) apply_filters( 'rationalseo_singular_schema_type', $type, $post_type, $this->build_context() );
 	}
 }

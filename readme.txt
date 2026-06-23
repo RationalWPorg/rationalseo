@@ -4,7 +4,7 @@ Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.7
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -180,6 +180,103 @@ Example — disable Open Graph on the entire site:
 
     add_filter( 'rationalseo_skip_open_graph', '__return_true' );
 
+= Schema (JSON-LD) filters =
+
+RationalSEO emits a single JSON-LD `@graph` containing the sitewide Organization (or Person), WebSite, and WebPage nodes, plus an Article node on singular views. Two filters let you reshape it:
+
+* `rationalseo_singular_schema_type` — string. The type resolved for a singular post type: `article` (default) keeps the Article entity, `none` omits the per-page entity while leaving the sitewide graph intact. Mirrors the per-post-type setting on the Schema tab. Signature: `($type, $post_type, $context)`.
+* `rationalseo_schema` — array. The complete schema array (`@context` + `@graph`) just before output. Add, modify, or remove `@graph` nodes here. Returning an array with an empty `@graph` suppresses output entirely. Signature: `($schema, $context)`.
+
+The `$context` array passed to both filters contains: `mode` (e.g. `singular`, `front_page`, `archive_term`), `queried_object`, `post_id` (the queried post ID on singular views, else 0), and `term_id`.
+
+Example — output a Google-valid in-person Event for an `event_instance` post type from your post meta.
+
+First, set that post type to "None" on the Schema tab so RationalSEO does not also emit an Article node. Then build the Event node from your own meta keys and append it to the graph (the node joins the same `@graph`, so the page still has a single JSON-LD script and keeps the sitewide Organization/WebSite/WebPage data).
+
+Google requires `name`, `startDate`, and a `location` with both a `name` and a full `address` for a physical event; `image`, `endDate`, `eventAttendanceMode`, `description`, `organizer`, and `offers` are recommended. The example includes the required fields unconditionally and adds the recommended ones only when the underlying data exists:
+
+    add_filter( 'rationalseo_schema', function ( $schema, $context ) {
+        // Only act on single views of the target post type.
+        if ( 'singular' !== $context['mode'] ) {
+            return $schema;
+        }
+        $post = get_post( $context['post_id'] );
+        if ( ! $post || 'event_instance' !== $post->post_type ) {
+            return $schema;
+        }
+
+        // Replace every meta key below with the ones your post type actually uses.
+        // Dates must be ISO 8601, e.g. 2026-09-01T09:00:00-07:00 (include the timezone).
+        $start = get_post_meta( $post->ID, '_event_start', true );
+        if ( empty( $start ) ) {
+            return $schema; // startDate is required — no valid Event without it.
+        }
+
+        // Required: name, startDate, and a Place location with name + full address.
+        $event = array(
+            '@type'               => 'Event',
+            '@id'                 => get_permalink( $post ) . '#event',
+            'name'                => get_the_title( $post ),
+            'startDate'           => $start,
+            'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
+            'eventStatus'         => 'https://schema.org/EventScheduled',
+            'location'            => array(
+                '@type'   => 'Place',
+                'name'    => get_post_meta( $post->ID, '_venue_name', true ),
+                'address' => array(
+                    '@type'           => 'PostalAddress',
+                    'streetAddress'   => get_post_meta( $post->ID, '_venue_street', true ),
+                    'addressLocality' => get_post_meta( $post->ID, '_venue_city', true ),
+                    'addressRegion'   => get_post_meta( $post->ID, '_venue_region', true ),
+                    'postalCode'      => get_post_meta( $post->ID, '_venue_postal', true ),
+                    'addressCountry'  => get_post_meta( $post->ID, '_venue_country', true ),
+                ),
+            ),
+        );
+
+        // Recommended: add each only when its data is present.
+        $end = get_post_meta( $post->ID, '_event_end', true );
+        if ( ! empty( $end ) ) {
+            $event['endDate'] = $end;
+        }
+
+        $image = get_the_post_thumbnail_url( $post, 'full' );
+        if ( $image ) {
+            $event['image'] = array( $image );
+        }
+
+        if ( has_excerpt( $post ) ) {
+            $event['description'] = wp_strip_all_tags( get_the_excerpt( $post ) );
+        }
+
+        $organizer = get_post_meta( $post->ID, '_event_organizer', true );
+        if ( ! empty( $organizer ) ) {
+            $event['organizer'] = array(
+                '@type' => 'Organization',
+                'name'  => $organizer,
+            );
+        }
+
+        // Admission/ticketing, if the event sells entry. Free events can omit this.
+        $price = get_post_meta( $post->ID, '_event_price', true );
+        if ( '' !== $price ) {
+            $event['offers'] = array(
+                '@type'         => 'Offer',
+                'price'         => $price,
+                'priceCurrency' => 'USD',
+                'availability'  => 'https://schema.org/InStock',
+                'url'           => get_permalink( $post ),
+            );
+        }
+
+        $schema['@graph'][] = $event;
+        return $schema;
+    }, 10, 2 );
+
+Online or hybrid events differ: set `eventAttendanceMode` accordingly and provide the stream URL as a `VirtualLocation` (`array( '@type' => 'VirtualLocation', 'url' => ... )`) instead of (or alongside) the physical `Place`.
+
+The same pattern works for Product, Recipe, FAQPage, or any other Schema.org type — build the node from your meta and append it to `$schema['@graph']`. Setting the post type to "None" first prevents a duplicate Article node; leaving it on "Article" keeps both. Always confirm the final output on a live URL with Google's Rich Results Test, since it cannot read a local-only site.
+
 = Action injection points =
 
 These actions fire immediately before and after each social meta block is emitted. They fire only when the block is not skipped via the corresponding skip filter. Signature: `do_action( '...', $context )`.
@@ -219,6 +316,12 @@ Override `og:type` to `event` for a custom post type, leaving all other post typ
 (`tribe_events` is illustrative — works for any CPT slug.)
 
 == Changelog ==
+
+= 1.1.0 =
+* Added: Per-post-type schema control under a new Schema tab. Set any public post type to "None" to suppress RationalSEO's per-page Article entity when your theme or another plugin already outputs structured data for it. The sitewide Organization, WebSite, and WebPage data is always preserved.
+* Added: `rationalseo_singular_schema_type` filter to override the resolved schema type per request.
+* Added: `rationalseo_schema` filter to add, modify, or remove JSON-LD `@graph` nodes before output — e.g. to inject an Event or Product entity from post meta. See the "Schema (JSON-LD) filters" section for a worked Event example.
+* Backward compatible: post types with no saved mapping continue to output the Article entity as before.
 
 = 1.0.7 =
 * Fixed: PHP 8.4 deprecation notice for an implicitly nullable constructor parameter.
