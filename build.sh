@@ -20,46 +20,22 @@ rm -f "${ZIP_FILE}"
 # Create build directory
 mkdir -p "${BUILD_DIR}/${PLUGIN_SLUG}"
 
-# Copy plugin files (excluding development files)
-rsync -av --exclude-from=- . "${BUILD_DIR}/${PLUGIN_SLUG}/" << 'EOF'
-.git
-.git/**
-.gitignore
-.DS_Store
-CLAUDE.md
-README.md
-build.sh
-build
-build/**
-*.zip
-node_modules
-node_modules/**
-vendor
-vendor/**
-.idea
-.idea/**
-.vscode
-.vscode/**
-.claude
-.claude/**
-Sites
-Sites/**
-*.swp
-*.swo
-*~
-Thumbs.db
-.env
-.env.*
-tests
-tests/**
-phpunit.xml
-phpcs.xml
-composer.json
-composer.lock
-package.json
-package-lock.json
-webpack.config.js
-EOF
+# Copy plugin files, excluding everything listed in .distignore. This is the
+# single source of truth for distribution exclusions, shared with the
+# WordPress.org SVN deploy, so the local zip matches what actually ships.
+# Comments and blank lines are stripped; build artifacts and VCS metadata are
+# always excluded as a safety net.
+EXCLUDE_FILE="$(mktemp)"
+if [ -f .distignore ]; then
+	grep -vE '^[[:space:]]*(#|$)' .distignore > "${EXCLUDE_FILE}"
+else
+	echo "Warning: .distignore not found; falling back to minimal exclusions." >&2
+fi
+printf '%s\n' '.svn' '.git' 'build' '*.zip' >> "${EXCLUDE_FILE}"
+
+rsync -av --exclude-from="${EXCLUDE_FILE}" . "${BUILD_DIR}/${PLUGIN_SLUG}/"
+
+rm -f "${EXCLUDE_FILE}"
 
 # Create the zip file
 cd "${BUILD_DIR}"
