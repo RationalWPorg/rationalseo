@@ -4,7 +4,7 @@ Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -316,6 +316,9 @@ Override `og:type` to `event` for a custom post type, leaving all other post typ
 (`tribe_events` is illustrative — works for any CPT slug.)
 
 == Changelog ==
+
+= 1.1.1 =
+* Fixed: The robots.txt Sitemap directive could be appended to the end of the previous line when another plugin's `robots_txt` filter returned output without a trailing newline, producing something like `Crawl-delay: 10Sitemap: https://example.com/sitemap.xml` and hiding the sitemap from crawlers. The inherited output is now normalized to exactly one trailing newline first.
 
 = 1.1.0 =
 * Added: Per-post-type schema control under a new Schema tab. Set any public post type to "None" to suppress RationalSEO's per-page Article entity when your theme or another plugin already outputs structured data for it. The sitewide Organization, WebSite, and WebPage data is always preserved.

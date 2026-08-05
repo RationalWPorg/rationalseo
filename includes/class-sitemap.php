@@ -126,7 +126,16 @@ class RationalSEO_Sitemap {
 	 * Core normally adds a Sitemap line for wp-sitemap.xml, but disabling core
 	 * sitemaps also removes that line, so we add our own.
 	 *
+	 * Other `robots_txt` filters run before this one and cannot be assumed to
+	 * leave a trailing newline behind. WP Engine's platform mu-plugin, for one,
+	 * rebuilds the output with `implode( "\n", $lines )` after having trimmed
+	 * it, so appending directly produced `Crawl-delay: 10Sitemap: https://...`
+	 * on a single line and the directive was lost. Normalize the inherited
+	 * output to exactly one trailing newline before concatenating so the
+	 * Sitemap line always starts on its own row, whatever ran ahead of us.
+	 *
 	 * @since 1.0.7
+	 * @since 1.1.1 Normalize the incoming output's trailing newline first.
 	 *
 	 * @param string $output The robots.txt content.
 	 * @param bool   $public Whether the site is public.
@@ -135,6 +144,13 @@ class RationalSEO_Sitemap {
 	public function add_sitemap_to_robots( $output, $public ) {
 		if ( ! $public || ! $this->settings->get( 'sitemap_enabled', true ) ) {
 			return $output;
+		}
+
+		// Collapse any run of trailing newlines to exactly one, but leave an
+		// empty inherited output empty so we never lead with a stray blank line.
+		$output = rtrim( (string) $output, "\r\n" );
+		if ( '' !== $output ) {
+			$output .= "\n";
 		}
 
 		$output .= 'Sitemap: ' . esc_url( home_url( '/sitemap.xml' ) ) . "\n";
