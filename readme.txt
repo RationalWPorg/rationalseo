@@ -4,7 +4,7 @@ Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -316,6 +316,11 @@ Override `og:type` to `event` for a custom post type, leaving all other post typ
 (`tribe_events` is illustrative — works for any CPT slug.)
 
 == Changelog ==
+
+= 1.1.3 =
+* Fixed: Saving any settings tab reset the fields on every other tab — for example, saving the Social tab cleared the logo and turned XML sitemaps off. Each tab now saves only its own fields, and a sitemap checkbox is treated as unchecked only when the Sitemaps tab itself is saved.
+* Fixed: Importing settings from Yoast, Rank Math, All in One SEO or SEOPress turned XML sitemaps off and corrupted a saved OpenAI API key by encrypting it a second time.
+* Fixed: The OpenAI API key could be encrypted twice the first time settings were saved on a new install.
 
 = 1.1.2 =
 * Fixed: The posts page (Settings → Reading → "Posts page") used the homepage as its canonical and `og:url`, telling search engines the blog index duplicated the homepage. It now uses the posts page's own URL, including the page number on paginated views (`/blog/page/2/`), and respects a custom canonical set on that page.

@@ -263,75 +263,75 @@ class RationalSEO_Admin {
 	/**
 	 * Sanitize settings before saving.
 	 *
+	 * Each settings tab is its own form and posts only that tab's fields, and
+	 * programmatic saves (importers, RationalSEO_Settings::set_multiple())
+	 * post the full stored array. Both are handled by starting from the
+	 * stored settings and overwriting only the keys present in the input.
+	 *
+	 * Unchecked checkboxes are omitted from a form POST, so a missing checkbox
+	 * means "off" only when the tab that renders it was submitted, as named by
+	 * the hidden `_tab` field.
+	 *
 	 * @param array $input Raw input data.
 	 * @return array Sanitized data.
 	 */
 	public function sanitize_settings( $input ) {
-		$sanitized = array();
+		$input        = is_array( $input ) ? $input : array();
+		$old_settings = get_option( RationalSEO_Settings::OPTION_NAME, array() );
+		$old_settings = is_array( $old_settings ) ? $old_settings : array();
+		$tab          = isset( $input['_tab'] ) ? sanitize_key( $input['_tab'] ) : '';
+		$sanitized    = $old_settings;
 
-		$sanitized['separator'] = isset( $input['separator'] )
-			? sanitize_text_field( $input['separator'] )
-			: '|';
+		$field_sanitizers = array(
+			'separator'            => 'sanitize_text_field',
+			'site_name'            => 'sanitize_text_field',
+			'site_logo'            => 'esc_url_raw',
+			'verification_google'  => 'sanitize_text_field',
+			'verification_bing'    => 'sanitize_text_field',
+			'social_default_image' => 'esc_url_raw',
+			'sitemap_max_age'      => 'absint',
+		);
+		foreach ( $field_sanitizers as $key => $callback ) {
+			if ( isset( $input[ $key ] ) ) {
+				$sanitized[ $key ] = call_user_func( $callback, $input[ $key ] );
+			}
+		}
 
-		$sanitized['site_type'] = isset( $input['site_type'] ) && in_array( $input['site_type'], array( 'organization', 'person' ), true )
-			? $input['site_type']
-			: 'organization';
+		if ( isset( $input['site_type'] ) && in_array( $input['site_type'], array( 'organization', 'person' ), true ) ) {
+			$sanitized['site_type'] = $input['site_type'];
+		}
 
-		$sanitized['site_name'] = isset( $input['site_name'] )
-			? sanitize_text_field( $input['site_name'] )
-			: '';
+		if ( isset( $input['twitter_card_type'] ) && in_array( $input['twitter_card_type'], array( 'summary', 'summary_large_image' ), true ) ) {
+			$sanitized['twitter_card_type'] = $input['twitter_card_type'];
+		}
 
-		$sanitized['site_logo'] = isset( $input['site_logo'] )
-			? esc_url_raw( $input['site_logo'] )
-			: '';
+		if ( isset( $input['sitemap_enabled'] ) ) {
+			$sanitized['sitemap_enabled'] = rest_sanitize_boolean( $input['sitemap_enabled'] );
+		} elseif ( 'sitemaps' === $tab ) {
+			$sanitized['sitemap_enabled'] = false;
+		}
 
-		$sanitized['verification_google'] = isset( $input['verification_google'] )
-			? sanitize_text_field( $input['verification_google'] )
-			: '';
-
-		$sanitized['verification_bing'] = isset( $input['verification_bing'] )
-			? sanitize_text_field( $input['verification_bing'] )
-			: '';
-
-		$sanitized['social_default_image'] = isset( $input['social_default_image'] )
-			? esc_url_raw( $input['social_default_image'] )
-			: '';
-
-		$sanitized['twitter_card_type'] = isset( $input['twitter_card_type'] ) && in_array( $input['twitter_card_type'], array( 'summary', 'summary_large_image' ), true )
-			? $input['twitter_card_type']
-			: 'summary_large_image';
-
-		$sanitized['sitemap_enabled'] = isset( $input['sitemap_enabled'] ) && '1' === $input['sitemap_enabled'];
-
-		$sanitized['sitemap_max_age'] = isset( $input['sitemap_max_age'] )
-			? absint( $input['sitemap_max_age'] )
-			: 0;
-
-		$sanitized['sitemap_exclude_types'] = array();
 		if ( isset( $input['sitemap_exclude_types'] ) && is_array( $input['sitemap_exclude_types'] ) ) {
 			$sanitized['sitemap_exclude_types'] = array_map( 'sanitize_key', $input['sitemap_exclude_types'] );
+		} elseif ( 'sitemaps' === $tab ) {
+			$sanitized['sitemap_exclude_types'] = array();
 		}
 
 		// Handle OpenAI API key with encryption.
-		$old_settings = get_option( RationalSEO_Settings::OPTION_NAME, array() );
-		$existing_key = isset( $old_settings['openai_api_key'] ) ? $old_settings['openai_api_key'] : '';
-
-		if ( ! empty( $input['openai_api_key_clear'] ) ) {
+		if ( '' === $tab ) {
+			// Programmatic saves pass the stored (already encrypted) value through.
+			if ( isset( $input['openai_api_key'] ) ) {
+				$sanitized['openai_api_key'] = (string) $input['openai_api_key'];
+			}
+		} elseif ( ! empty( $input['openai_api_key_clear'] ) ) {
 			// Clear checkbox is checked - remove the key.
 			$sanitized['openai_api_key'] = '';
 		} elseif ( isset( $input['openai_api_key'] ) ) {
 			$new_key = trim( $input['openai_api_key'] );
-			// Check if it's placeholder bullets (all bullet characters).
-			if ( '' === $new_key || preg_match( '/^[\x{2022}\x{25CF}\x{25A0}•]+$/u', $new_key ) ) {
-				// Keep existing key.
-				$sanitized['openai_api_key'] = $existing_key;
-			} else {
-				// Encrypt and store new key.
+			// Empty or placeholder bullets keep the existing key.
+			if ( '' !== $new_key && ! preg_match( '/^[\x{2022}\x{25CF}\x{25A0}•]+$/u', $new_key ) ) {
 				$sanitized['openai_api_key'] = $this->settings->encrypt_value( $new_key );
 			}
-		} else {
-			// Keep existing key if field not submitted.
-			$sanitized['openai_api_key'] = $existing_key;
 		}
 
 		// Handle archive title/description fields.
@@ -342,23 +342,18 @@ class RationalSEO_Admin {
 
 			if ( isset( $input[ $title_key ] ) ) {
 				$sanitized[ $title_key ] = sanitize_text_field( $input[ $title_key ] );
-			} elseif ( isset( $old_settings[ $title_key ] ) ) {
-				$sanitized[ $title_key ] = $old_settings[ $title_key ];
 			}
 
 			if ( isset( $input[ $desc_key ] ) ) {
 				$sanitized[ $desc_key ] = sanitize_textarea_field( $input[ $desc_key ] );
-			} elseif ( isset( $old_settings[ $desc_key ] ) ) {
-				$sanitized[ $desc_key ] = $old_settings[ $desc_key ];
 			}
 		}
 
-		// Handle per-post-type schema mapping.
-		$existing_schema_map         = isset( $old_settings['schema_post_types'] ) && is_array( $old_settings['schema_post_types'] )
-			? $old_settings['schema_post_types']
-			: array();
-		$sanitized['schema_post_types'] = $existing_schema_map;
-		$submitted_schema_map        = isset( $input['schema_post_types'] ) && is_array( $input['schema_post_types'] )
+		// Handle per-post-type schema mapping, merging into the stored map.
+		if ( ! isset( $sanitized['schema_post_types'] ) || ! is_array( $sanitized['schema_post_types'] ) ) {
+			$sanitized['schema_post_types'] = array();
+		}
+		$submitted_schema_map = isset( $input['schema_post_types'] ) && is_array( $input['schema_post_types'] )
 			? $input['schema_post_types']
 			: array();
 		foreach ( $this->get_schema_post_types() as $post_type ) {
@@ -372,9 +367,9 @@ class RationalSEO_Admin {
 		}
 
 		// Flush rewrite rules if sitemap settings changed.
-		$sitemap_changed = (
-			( isset( $old_settings['sitemap_enabled'] ) ? $old_settings['sitemap_enabled'] : true ) !== $sanitized['sitemap_enabled']
-		);
+		$sitemap_was_enabled = isset( $old_settings['sitemap_enabled'] ) ? (bool) $old_settings['sitemap_enabled'] : true;
+		$sitemap_is_enabled  = isset( $sanitized['sitemap_enabled'] ) ? (bool) $sanitized['sitemap_enabled'] : true;
+		$sitemap_changed     = $sitemap_was_enabled !== $sitemap_is_enabled;
 		if ( $sitemap_changed ) {
 			add_action( 'shutdown', array( 'RationalSEO_Sitemap', 'flush_rules' ) );
 		}
@@ -475,6 +470,11 @@ class RationalSEO_Admin {
 				<form action="options.php" method="post">
 					<?php
 					settings_fields( 'rationalseo_settings_group' );
+					printf(
+						'<input type="hidden" name="%s[_tab]" value="%s">',
+						esc_attr( RationalSEO_Settings::OPTION_NAME ),
+						esc_attr( $current_tab )
+					);
 
 					if ( 'social' === $current_tab ) {
 						do_settings_sections( 'rationalseo_social' );
