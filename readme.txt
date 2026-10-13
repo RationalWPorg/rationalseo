@@ -4,7 +4,7 @@ Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -156,7 +156,7 @@ These filters run on the resolved value just before it is output. All use the si
 
 * `rationalseo_document_title` — string. The `<title>` tag value before output.
 * `rationalseo_canonical_url` — string. The `rel=canonical` URL before output.
-* `rationalseo_robots` — array. The robots directives array (joined with `, ` for output).
+* `rationalseo_robots` — array. The robots directives array. On WordPress 5.7+ these are merged into core's single robots meta tag (a `noindex` or `nofollow` from core, e.g. "Discourage search engines", always wins); returning an empty array leaves the tag to core.
 * `rationalseo_og_locale` — string. `og:locale` value before output.
 * `rationalseo_og_type` — string. `og:type` value (e.g. `website` / `article`) before output.
 * `rationalseo_og_title` — string. `og:title` value before output.
@@ -172,7 +172,7 @@ These filters run on the resolved value just before it is output. All use the si
 Return a truthy value to suppress an entire output block. Signature: `($skip, $context)`.
 
 * `rationalseo_skip_meta_description` — Skip the meta description tag entirely.
-* `rationalseo_skip_canonical` — Skip the canonical link tag entirely.
+* `rationalseo_skip_canonical` — Skip RationalSEO's canonical link tag. WordPress core's own canonical (singular views only) is then left in place.
 * `rationalseo_skip_open_graph` — Skip all Open Graph tags entirely.
 * `rationalseo_skip_twitter_cards` — Skip all Twitter Card tags entirely.
 
@@ -297,7 +297,7 @@ Example — append a custom og:* tag after the standard Open Graph block:
 
 All per-value filters, skip filters, and action hooks receive a `$context` array as their last argument. It is built by the internal `build_context()` method and always contains the following keys:
 
-* `mode` — string. One of: `front_page`, `home`, `singular`, `archive_term`, `archive_post_type`, `archive_author`, `archive_date`, `search`, `404`, `fallback`.
+* `mode` — string. One of: `front_page`, `home`, `singular`, `archive_term`, `archive_post_type`, `archive_author`, `archive_date`, `search`, `404`, `fallback`. `home` is the static posts page only; other requests WordPress flags as `is_home()` (such as custom rewrite endpoints) resolve to `fallback`.
 * `queried_object` — mixed. Result of `get_queried_object()` at resolution time. May be `WP_Post`, `WP_Term`, `WP_Post_Type`, `WP_User`, or `null`.
 * `post_id` — int. Queried post ID when on a singular view; `0` otherwise.
 * `term_id` — int. Queried term ID when on a taxonomy archive; `0` otherwise.
@@ -316,6 +316,13 @@ Override `og:type` to `event` for a custom post type, leaving all other post typ
 (`tribe_events` is illustrative — works for any CPT slug.)
 
 == Changelog ==
+
+= 1.1.2 =
+* Fixed: The posts page (Settings → Reading → "Posts page") used the homepage as its canonical and `og:url`, telling search engines the blog index duplicated the homepage. It now uses the posts page's own URL, including the page number on paginated views (`/blog/page/2/`), and respects a custom canonical set on that page.
+* Fixed: Pages had two canonical tags and two robots meta tags because WordPress core's own tags were not suppressed. RationalSEO's canonical now replaces core's, and its robots directives are merged into core's robots tag (WordPress 5.7+) so each page has exactly one of each. Older WordPress versions keep RationalSEO's own robots tag.
+* Fixed: Block themes (e.g. Twenty Twenty-Five) printed a second `<title>` tag.
+* Fixed: 404 and search result pages no longer output a canonical tag (both are already `noindex`). Fallback canonicals now respect the permalink structure's trailing slash.
+* Fixed: Requests WordPress flags as `is_home()` without being the posts page, such as custom rewrite endpoints, no longer inherit the posts page's title, description, image, and canonical. They resolve as `fallback` in the filter `$context`.
 
 = 1.1.1 =
 * Fixed: The robots.txt Sitemap directive could be appended to the end of the previous line when another plugin's `robots_txt` filter returned output without a trailing newline, producing something like `Crawl-delay: 10Sitemap: https://example.com/sitemap.xml` and hiding the sitemap from crawlers. The inherited output is now normalized to exactly one trailing newline first.

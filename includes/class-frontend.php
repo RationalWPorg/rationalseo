@@ -80,7 +80,11 @@ class RationalSEO_Frontend {
 		add_action( 'after_setup_theme', array( $this, 'remove_title_tag_support' ), 99 );
 
 		// Output our SEO tags early in wp_head.
+		add_action( 'wp_head', array( $this, 'remove_block_theme_title_tag' ), 0 );
 		add_action( 'wp_head', array( $this, 'output_seo_tags' ), 1 );
+
+		// Merge our robots directives into core's robots meta tag (WP 5.7+).
+		add_filter( 'wp_robots', array( $this, 'filter_wp_robots' ), 99 );
 
 		// Filter the document title.
 		add_filter( 'pre_get_document_title', array( $this, 'filter_document_title' ), 99 );
@@ -143,6 +147,22 @@ class RationalSEO_Frontend {
 		$title = $this->get_title();
 		if ( $title ) {
 			printf( "<title>%s</title>\n", esc_html( $title ) );
+		}
+	}
+
+	/**
+	 * Remove the block theme title tag when we print our own.
+	 *
+	 * Block themes print a title tag at wp_head priority 1 regardless of
+	 * title-tag theme support, so remove_title_tag_support() does not stop it.
+	 * Runs at priority 0 because a callback cannot be removed from the
+	 * priority that is currently executing.
+	 *
+	 * @since 1.1.2
+	 */
+	public function remove_block_theme_title_tag() {
+		if ( $this->get_title() ) {
+			remove_action( 'wp_head', '_block_template_render_title_tag', 1 );
 		}
 	}
 
@@ -322,13 +342,10 @@ class RationalSEO_Frontend {
 		}
 
 		// Blog page (separate posts page).
-		if ( is_home() ) {
-			$blog_page_id = get_option( 'page_for_posts' );
-			if ( $blog_page_id ) {
-				$meta = $this->get_post_seo_meta( $blog_page_id );
-				if ( ! empty( $meta['title'] ) ) {
-					return $this->finalize_title( $meta['title'] );
-				}
+		if ( $this->is_posts_page() ) {
+			$meta = $this->get_post_seo_meta( (int) get_option( 'page_for_posts' ) );
+			if ( ! empty( $meta['title'] ) ) {
+				return $this->finalize_title( $meta['title'] );
 			}
 			return $this->finalize_title( sprintf( '%s %s %s', __( 'Blog', 'rationalseo' ), $separator, $site_name ) );
 		}
@@ -463,14 +480,11 @@ class RationalSEO_Frontend {
 		}
 
 		// Blog page (separate posts page).
-		if ( is_home() ) {
-			$blog_page_id = get_option( 'page_for_posts' );
-			if ( $blog_page_id ) {
-				$meta = $this->get_post_seo_meta( $blog_page_id );
-				if ( ! empty( $meta['desc'] ) ) {
-					$this->cached_description = $this->truncate_description( $meta['desc'] );
-					return $this->cached_description;
-				}
+		if ( $this->is_posts_page() ) {
+			$meta = $this->get_post_seo_meta( (int) get_option( 'page_for_posts' ) );
+			if ( ! empty( $meta['desc'] ) ) {
+				$this->cached_description = $this->truncate_description( $meta['desc'] );
+				return $this->cached_description;
 			}
 			$this->cached_description = $this->truncate_description( get_bloginfo( 'description' ) );
 			return $this->cached_description;
@@ -607,12 +621,76 @@ class RationalSEO_Frontend {
 
 	/**
 	 * Output meta robots tag.
+	 *
+	 * On WordPress 5.7+ core prints its own robots tag, and our directives are
+	 * merged into it by filter_wp_robots() so the page carries exactly one.
+	 * Our own tag is printed only when core's output is unavailable.
 	 */
 	private function output_robots() {
+		if ( $this->core_outputs_robots() ) {
+			return;
+		}
+
 		$robots = $this->get_robots();
 		if ( ! empty( $robots ) ) {
 			printf( "<meta name=\"robots\" content=\"%s\" />\n", esc_attr( implode( ', ', $robots ) ) );
 		}
+	}
+
+	/**
+	 * Whether WordPress core prints the robots meta tag in wp_head.
+	 *
+	 * @since 1.1.2
+	 *
+	 * @return bool
+	 */
+	private function core_outputs_robots() {
+		return function_exists( 'wp_robots' ) && false !== has_action( 'wp_head', 'wp_robots' );
+	}
+
+	/**
+	 * Merge RationalSEO's robots directives into core's robots meta tag.
+	 *
+	 * Only applies during wp_head so login and embed screens keep core's
+	 * directives untouched. Our values win for shared directives, except that
+	 * a noindex or nofollow from any source (e.g. "Discourage search engines")
+	 * always overrides index or follow.
+	 *
+	 * @since 1.1.2
+	 *
+	 * @param array $robots Associative array of directives from the wp_robots filter.
+	 * @return array
+	 */
+	public function filter_wp_robots( $robots ) {
+		if ( ! doing_action( 'wp_head' ) ) {
+			return $robots;
+		}
+
+		$ours = array();
+		foreach ( $this->get_robots() as $directive ) {
+			$parts = explode( ':', (string) $directive, 2 );
+			$key   = strtolower( trim( $parts[0] ) );
+			if ( '' === $key ) {
+				continue;
+			}
+			$ours[ $key ] = isset( $parts[1] ) ? trim( $parts[1] ) : true;
+		}
+
+		if ( empty( $ours ) ) {
+			return $robots;
+		}
+
+		// Union keeps our directives first and our values for shared keys.
+		$robots = $ours + (array) $robots;
+
+		if ( ! empty( $robots['noindex'] ) ) {
+			unset( $robots['index'] );
+		}
+		if ( ! empty( $robots['nofollow'] ) ) {
+			unset( $robots['follow'] );
+		}
+
+		return $robots;
 	}
 
 	/**
@@ -663,8 +741,10 @@ class RationalSEO_Frontend {
 		 * Filter the resolved robots directives array just before output.
 		 *
 		 * Receives the array of directive strings (e.g. ['index', 'follow',
-		 * 'max-image-preview:large']). Return value is cast to array; an empty
-		 * array suppresses the robots meta tag entirely.
+		 * 'max-image-preview:large']). Return value is cast to array. On
+		 * WordPress 5.7+ these directives are merged into core's robots meta
+		 * tag, and an empty array leaves that tag to core alone; on older
+		 * versions an empty array suppresses RationalSEO's robots tag.
 		 *
 		 * @since 1.0.6
 		 *
@@ -697,6 +777,9 @@ class RationalSEO_Frontend {
 		$canonical = $this->get_canonical();
 		if ( $canonical ) {
 			printf( "<link rel=\"canonical\" href=\"%s\" />\n", esc_url( $canonical ) );
+
+			// Ours replaces core's; when we print nothing, core's is left in place.
+			remove_action( 'wp_head', 'rel_canonical' );
 		}
 	}
 
@@ -711,6 +794,11 @@ class RationalSEO_Frontend {
 			return $this->cached_canonical;
 		}
 
+		// 404 and search pages are noindexed and have no canonical counterpart.
+		if ( is_404() || is_search() ) {
+			return $this->finalize_canonical( '' );
+		}
+
 		// Check for custom canonical on singular posts.
 		if ( is_singular() ) {
 			$post = get_queried_object();
@@ -722,8 +810,18 @@ class RationalSEO_Frontend {
 		}
 
 		// Homepage.
-		if ( is_front_page() || is_home() ) {
+		if ( is_front_page() ) {
 			return $this->finalize_canonical( home_url( '/' ) );
+		}
+
+		// Blog page (separate posts page).
+		if ( $this->is_posts_page() ) {
+			$blog_page_id = (int) get_option( 'page_for_posts' );
+			$meta         = $this->get_post_seo_meta( $blog_page_id );
+			if ( ! empty( $meta['canonical'] ) ) {
+				return $this->finalize_canonical( $meta['canonical'] );
+			}
+			return $this->finalize_canonical( $this->add_pagination( get_permalink( $blog_page_id ) ) );
 		}
 
 		// Archive pages.
@@ -750,7 +848,52 @@ class RationalSEO_Frontend {
 
 		// Fallback to current URL (cleaned).
 		global $wp;
-		return $this->finalize_canonical( home_url( $wp->request ) );
+		return $this->finalize_canonical( user_trailingslashit( home_url( $wp->request ) ) );
+	}
+
+	/**
+	 * Whether the current request is the static posts page.
+	 *
+	 * is_home() is also true for requests that match no standard query vars,
+	 * such as custom rewrite endpoints, so this additionally requires the
+	 * queried object to be the configured page_for_posts page. When the front
+	 * page shows latest posts, is_front_page() covers the blog index instead.
+	 *
+	 * @since 1.1.2
+	 *
+	 * @return bool
+	 */
+	private function is_posts_page() {
+		if ( ! is_home() || is_front_page() ) {
+			return false;
+		}
+
+		$blog_page_id = (int) get_option( 'page_for_posts' );
+
+		return $blog_page_id > 0 && get_queried_object_id() === $blog_page_id;
+	}
+
+	/**
+	 * Append the current archive page number to a URL.
+	 *
+	 * @since 1.1.2
+	 *
+	 * @param string $url Base URL of page 1.
+	 * @return string URL of the current page, unchanged on page 1.
+	 */
+	private function add_pagination( $url ) {
+		global $wp_rewrite;
+
+		$paged = (int) get_query_var( 'paged' );
+		if ( $paged < 2 ) {
+			return $url;
+		}
+
+		if ( $wp_rewrite->using_permalinks() ) {
+			return user_trailingslashit( trailingslashit( $url ) . $wp_rewrite->pagination_base . '/' . $paged, 'paged' );
+		}
+
+		return add_query_arg( 'paged', $paged, $url );
 	}
 
 	/**
@@ -1013,7 +1156,8 @@ class RationalSEO_Frontend {
 	 * Build the standard context array passed to all filters and actions.
 	 *
 	 * The mode string reflects the current WordPress conditional hierarchy.
-	 * queried_object is passed through raw from get_queried_object() — callers
+	 * 'home' is used only for the static posts page; other is_home() requests
+	 * (e.g. custom rewrite endpoints) resolve to 'fallback'. queried_object is passed through raw from get_queried_object() — callers
 	 * receive a WP_Post, WP_Term, WP_Post_Type, WP_User, or null depending on
 	 * the current route.
 	 *
@@ -1032,7 +1176,7 @@ class RationalSEO_Frontend {
 	private function build_context() {
 		if ( is_front_page() ) {
 			$mode = 'front_page';
-		} elseif ( is_home() ) {
+		} elseif ( $this->is_posts_page() ) {
 			$mode = 'home';
 		} elseif ( is_singular() ) {
 			$mode = 'singular';
@@ -1095,7 +1239,7 @@ class RationalSEO_Frontend {
 	 * page. All keys are always present; unknown values use safe defaults.
 	 *
 	 * Resolution priority:
-	 * 1. is_home()     — blog page og_image meta, then blog page featured image.
+	 * 1. Posts page    — blog page og_image meta, then blog page featured image.
 	 * 2. is_singular() — post og_image meta, then post featured image.
 	 * 3. is_category()/is_tag()/is_tax() — term og_image meta.
 	 * 4. Settings social_default_image.
@@ -1211,22 +1355,20 @@ class RationalSEO_Frontend {
 		};
 
 		// 1. Blog page: og_image meta or featured image.
-		if ( is_home() ) {
-			$blog_page_id = get_option( 'page_for_posts' );
-			if ( $blog_page_id ) {
-				$meta = $this->get_post_seo_meta( $blog_page_id );
-				if ( ! empty( $meta['og_image'] ) ) {
-					$this->cached_social_image_data = $build_from_url( $meta['og_image'] );
-					return $this->cached_social_image_data;
-				}
-				if ( has_post_thumbnail( $blog_page_id ) ) {
-					$thumbnail_id = get_post_thumbnail_id( $blog_page_id );
-					if ( $thumbnail_id ) {
-						$data = $build_from_attachment( $thumbnail_id );
-						if ( ! empty( $data['url'] ) ) {
-							$this->cached_social_image_data = $data;
-							return $this->cached_social_image_data;
-						}
+		if ( $this->is_posts_page() ) {
+			$blog_page_id = (int) get_option( 'page_for_posts' );
+			$meta         = $this->get_post_seo_meta( $blog_page_id );
+			if ( ! empty( $meta['og_image'] ) ) {
+				$this->cached_social_image_data = $build_from_url( $meta['og_image'] );
+				return $this->cached_social_image_data;
+			}
+			if ( has_post_thumbnail( $blog_page_id ) ) {
+				$thumbnail_id = get_post_thumbnail_id( $blog_page_id );
+				if ( $thumbnail_id ) {
+					$data = $build_from_attachment( $thumbnail_id );
+					if ( ! empty( $data['url'] ) ) {
+						$this->cached_social_image_data = $data;
+						return $this->cached_social_image_data;
 					}
 				}
 			}
@@ -1325,18 +1467,18 @@ class RationalSEO_Frontend {
 
 		$graph[] = $website;
 
-		// Build WebPage entity.
+		// Build WebPage entity (skipped on pages without a canonical, e.g. 404 and search).
 		$page_url = $this->get_canonical();
-		$webpage  = array(
-			'@type'    => 'WebPage',
-			'@id'      => $page_url . '#webpage',
-			'url'      => $page_url,
-			'isPartOf' => array(
-				'@id' => $site_url . '#website',
-			),
-		);
-
-		$graph[] = $webpage;
+		if ( $page_url ) {
+			$graph[] = array(
+				'@type'    => 'WebPage',
+				'@id'      => $page_url . '#webpage',
+				'url'      => $page_url,
+				'isPartOf' => array(
+					'@id' => $site_url . '#website',
+				),
+			);
+		}
 
 		// Build Article entity for singular posts/pages.
 		$post = ( is_singular() && ! is_front_page() ) ? get_queried_object() : null;
