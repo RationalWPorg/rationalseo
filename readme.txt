@@ -2,7 +2,7 @@
 Contributors: rationalwp
 Tags: seo, meta tags, sitemap, schema
 Requires at least: 5.0
-Tested up to: 7.1
+Tested up to: 7.2
 Requires PHP: 7.4
 Stable tag: 1.1.3
 License: GPLv2 or later
